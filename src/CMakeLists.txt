@@ -38,6 +38,7 @@ add_executable(${ProjectName}
         Fan.h
         CO2Sensor.cpp
         CO2Sensor.h
+        Control_task/Control.cpp
 )
 
 target_include_directories(${ProjectName} PRIVATE

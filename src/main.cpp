@@ -1,8 +1,12 @@
 #include <iostream>
 #include <sstream>
+#include <Control_task/Control.h>
+#include <pico/stdio.h>
+
 #include "FreeRTOS.h"
 #include "task.h"
 #include "semphr.h"
+#include "timers.h"
 #include "hardware/gpio.h"
 #include "PicoOsUart.h"
 #include "ssd1306.h"
@@ -18,7 +22,7 @@ uint32_t read_runtime_ctr(void) {
     return timer_hw->timerawl;
 }
 }
-
+#if 0
 #include "blinker.h"
 
 SemaphoreHandle_t gpio_sem;
@@ -118,18 +122,8 @@ void tls_task(void *param)
         vTaskDelay(100);
     }
 }
+#endif
 
-int main()
-{
-    static led_params lp1 = { .pin = 20, .delay = 300 };
-    stdio_init_all();
-    printf("\nBoot\n");
-
-    gpio_sem = xSemaphoreCreateBinary();
-    //xTaskCreate(blink_task, "LED_1", 256, (void *) &lp1, tskIDLE_PRIORITY + 1, nullptr);
-    //xTaskCreate(gpio_task, "BUTTON", 256, (void *) nullptr, tskIDLE_PRIORITY + 1, nullptr);
-    //xTaskCreate(serial_task, "UART1", 256, (void *) nullptr,
-    //            tskIDLE_PRIORITY + 1, nullptr);
 #if 0
     xTaskCreate(modbus_task, "Modbus", 512, (void *) nullptr,
                 tskIDLE_PRIORITY + 1, nullptr);
@@ -151,10 +145,10 @@ int main()
         tskIDLE_PRIORITY+1, nullptr);
 
 #endif
-#if 1
+#if 0
     xTaskCreate(co2_task, "co2", 512, nullptr,
         tskIDLE_PRIORITY+1, nullptr);
-#endif
+
 
     vTaskStartScheduler();
 
@@ -169,15 +163,14 @@ int main()
 // We are using pins 0 and 1, but see the GPIO function select table in the
 // datasheet for information on which other pins can be used.
 
-#if 0
 #define UART_NR 0
 #define UART_TX_PIN 0
 #define UART_RX_PIN 1
-#else
+
 #define UART_NR 1
 #define UART_TX_PIN 4
 #define UART_RX_PIN 5
-#endif
+
 
 #define BAUD_RATE 9600
 #define STOP_BITS 2 // for real system (pico simualtor also requires 2 stop bits)
@@ -299,3 +292,26 @@ void co2_task(void *param) {
     }
 }
 
+#endif
+
+TimerHandle_t measure_timer;
+SemaphoreHandle_t measure_semaphore;
+
+void timer_callback(TimerHandle_t xTimer) {
+    xSemaphoreGive(measure_semaphore);
+}
+
+int main() {
+    stdio_init_all();
+
+    measure_timer = xTimerCreate("measure_timer", pdMS_TO_TICKS(1000), pdTRUE, nullptr, timer_callback);
+    measure_semaphore = xSemaphoreCreateBinary();
+
+    xTimerStart(measure_timer, 0);
+
+    Control control_task(measure_semaphore);
+
+    vTaskStartScheduler();
+
+    while(true) {};
+}
