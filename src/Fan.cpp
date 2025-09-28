@@ -10,28 +10,29 @@ Fan::Fan(std::shared_ptr<ModbusClient> client, int server_address)
 void Fan::setSpeed(int speed){
     if (speed < 0) speed = 0;
     if (speed > 100) speed = 100;
-    produal_speed.write(speed);
-    current_speed = speed;
+    produal_speed.write(speed * 10);
+    current_speed_in_percent = speed;
+}
+
+//return the speed of the fan saved in the system
+int Fan::getSpeed() const{
+    return current_speed_in_percent;
+}
+
+//get the pulse from the fan
+uint16_t Fan::returnPulse(){
+    return produal_pulse.read();
 }
 
 //check if fan is running after two reads
-bool Fan::isWorking(){
-    int first = produal_pulse.read();
-    if(first == 0 && current_speed > 0){
+//bool fan_working = true;
+
+/*bool checkFan(){
+    uint16_t first = fan.returnPulse();
+    if(first == 0 && fan.returnPulse() > 0){
         vTaskDelay(pdMS_TO_TICKS(100));
-        if(produal_pulse.read() == 0){
-            is_working = false;
-            return is_working;
+        if(fan.returnPulse == 0){
+            return false;
         };
-    }
-    is_working = true;
-    return is_working;
-}
-
-int Fan::getSpeed() const{
-    return current_speed;
-}
-
-bool Fan::checkWorkingStatus() const{
-    return is_working;
-}
+    return true;
+}*/
