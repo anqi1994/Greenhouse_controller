@@ -26,6 +26,7 @@ private:
     SemaphoreHandle_t timer_semphr;
     TaskHandle_t control_task;
     const char *name = "CONTROL";
+    uint max_co2 = 2000;
 };
 
 #endif //CONTROL_H

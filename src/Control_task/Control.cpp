@@ -28,6 +28,11 @@ void Control::task_impl() {
             } else {
                 printf("CO2 failed, last value: %d ppm\n", co2.lastPpm());
             }
+            if (co2_val >= max_co2) {
+                fan.setSpeed(50);
+            } else {
+                fan.setSpeed(0);
+            }
         }
     }
 }
