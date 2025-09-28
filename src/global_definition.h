@@ -105,11 +105,6 @@ extern QueueHandle_t gpio_data_q;
 #define BAUD_RATE 9600
 #define STOP_BITS 2  // For real system (Pico simulator also requires 2 stop bits)
 
-// LED Parameters Structure
-struct led_params {
-    uint pin;
-    uint delay;
-};
 
 #define SSID_POS_X 44
 #define PASS_POS_X 44
@@ -121,3 +116,4 @@ struct led_params {
 
 
 #endif //FREERTOS_VENTILATION_PROJECT_GLOBAL_DEFINITION_H
+
