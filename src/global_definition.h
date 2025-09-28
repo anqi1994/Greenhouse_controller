@@ -50,8 +50,8 @@ extern char PASS_WIFI[64];
 
 #define TLS_CLIENT_SERVER "api.thingspeak.com"
 #define TLS_CLIENT_TIMEOUT_SECS 15
-#define API_KEY "G6YC2UTUAHX5P9HF"
-#define TALKBACK_KEY "5U9WXY13SXD01SER"
+#define API_KEY "..."
+#define TALKBACK_KEY "..."
 
 // Screen Options
 extern uint selection_screen_option;
@@ -118,5 +118,6 @@ struct led_params {
 #define MAX_SETPOINT 1500
 #define CO2_LIMIT 2000
 #define OFFSET 100
+
 
 #endif //FREERTOS_VENTILATION_PROJECT_GLOBAL_DEFINITION_H
