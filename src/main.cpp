@@ -6,6 +6,10 @@
 #include "hardware/gpio.h"
 #include "PicoOsUart.h"
 #include "ssd1306.h"
+#include "Fan.h"
+#include "modbus/ModbusClient.h"
+#include "uart/PicoOsUart.h"
+
 
 
 #include "hardware/timer.h"
@@ -101,6 +105,8 @@ void serial_task(void *param)
 void modbus_task(void *param);
 void display_task(void *param);
 void i2c_task(void *param);
+void fan_task(void *param);
+
 extern "C" {
     void tls_test(void);
 }
@@ -131,13 +137,18 @@ int main()
     xTaskCreate(display_task, "SSD1306", 512, (void *) nullptr,
                 tskIDLE_PRIORITY + 1, nullptr);
 #endif
-#if 1
+#if 0
     xTaskCreate(i2c_task, "i2c test", 512, (void *) nullptr,
                 tskIDLE_PRIORITY + 1, nullptr);
 #endif
 #if 0
     xTaskCreate(tls_task, "tls test", 6000, (void *) nullptr,
                 tskIDLE_PRIORITY + 1, nullptr);
+#endif
+#if 1
+    xTaskCreate(fan_task, "Fan", 1024, nullptr,
+        tskIDLE_PRIORITY+1, nullptr);
+
 #endif
     vTaskStartScheduler();
 
@@ -148,8 +159,10 @@ int main()
 #include "ModbusClient.h"
 #include "ModbusRegister.h"
 
+
 // We are using pins 0 and 1, but see the GPIO function select table in the
 // datasheet for information on which other pins can be used.
+
 #if 0
 #define UART_NR 0
 #define UART_TX_PIN 0
@@ -255,5 +268,28 @@ void i2c_task(void *param) {
         vTaskDelay(delay);
     }
 
+}
+
+// Test task: set fan speed and poll working status.
+// Comment: This runs under FreeRTOS because Fan::isWorking() uses vTaskDelay().
+void fan_task(void *param) {
+    // 1) Create UART and Modbus client (use your existing macros)
+    auto uart = std::make_shared<PicoOsUart>(UART_NR, UART_TX_PIN, UART_RX_PIN, BAUD_RATE, STOP_BITS);
+    auto rtu  = std::make_shared<ModbusClient>(uart);
+
+    // 2) Bind fan at slave ID 1
+    Fan fan(rtu, 1);
+
+    // 3) Set a conservative speed first (avoid full power at bring-up)
+    fan.setSpeed(30);  // 30% as a safe start
+
+    // 4) Poll status every 1 s
+    for (;;) {
+        bool working = fan.isWorking();    // Uses vTaskDelay(100 ms) inside the class
+        printf("Fan working = %s, speed=%d%%\n", working ? "true" : "false", fan.getSpeed());
+        vTaskDelay(pdMS_TO_TICKS(1000));   // Print every 1 s
+    }
 
 }
+
+
