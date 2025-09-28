@@ -7,7 +7,8 @@
 #include "PicoOsUart.h"
 #include "ssd1306.h"
 
-
+#include "screen_selection.h"
+#include "global_definition.h"
 #include "hardware/timer.h"
 extern "C" {
 uint32_t read_runtime_ctr(void) {
@@ -123,7 +124,7 @@ int main()
     //xTaskCreate(gpio_task, "BUTTON", 256, (void *) nullptr, tskIDLE_PRIORITY + 1, nullptr);
     //xTaskCreate(serial_task, "UART1", 256, (void *) nullptr,
     //            tskIDLE_PRIORITY + 1, nullptr);
-#if 0
+#if 1
     xTaskCreate(modbus_task, "Modbus", 512, (void *) nullptr,
                 tskIDLE_PRIORITY + 1, nullptr);
 
@@ -211,14 +212,35 @@ void modbus_task(void *param) {
 void display_task(void *param)
 {
     auto i2cbus{std::make_shared<PicoI2C>(1, 400000)};
-    ssd1306os display(i2cbus);
-    display.fill(0);
-    display.text("Boot", 0, 0);
-    display.show();
-    while(true) {
-        vTaskDelay(100);
-    }
+    auto display = std::make_shared<ssd1306os>(i2cbus);
 
+    currentScreen screen(display);
+
+    // Show welcome first
+    screen.welcome();
+    vTaskDelay(pdMS_TO_TICKS(2000));
+
+    // Then show the selection menu
+    screen.setSelectionOption(0);  // highlight first option
+    screen.screenSelection();
+    vTaskDelay(pdMS_TO_TICKS(2000));
+
+    // Then show CO2 set screen
+    screen.setCo2(450);
+    vTaskDelay(pdMS_TO_TICKS(2000));
+
+    // Then show info screen
+    screen.info(450, 23, 40, 10, 400);
+    vTaskDelay(pdMS_TO_TICKS(2000));
+
+    // Then show wifi config screen
+    screen.setWifiOption(0);
+    screen.wifiConfig("MySSID", "MyPass");
+    vTaskDelay(pdMS_TO_TICKS(2000));
+
+    while (true) {
+        vTaskDelay(pdMS_TO_TICKS(1000));
+    }
 }
 
 void i2c_task(void *param) {
