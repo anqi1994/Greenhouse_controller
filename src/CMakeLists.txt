@@ -8,10 +8,10 @@ add_executable(${ProjectName}
 
 #        ipstack/IPStack.cpp
 #        ipstack/IPStack.h
-        ipstack/lwipopts.h
-        ipstack/tls_common.c
-        ipstack/picow_tls_client.c
-        ipstack/lwipopts_tls.h
+#        ipstack/lwipopts.h
+#        ipstack/tls_common.c
+#        ipstack/picow_tls_client.c
+#        ipstack/lwipopts_tls.h
 
         i2c/PicoI2C.cpp
         i2c/PicoI2C.h
@@ -36,6 +36,8 @@ add_executable(${ProjectName}
         display/ssd1306os.cpp
         Fan.cpp
         Fan.h
+        CO2Sensor.cpp
+        CO2Sensor.h
 )
 
 target_include_directories(${ProjectName} PRIVATE
@@ -44,7 +46,7 @@ target_include_directories(${ProjectName} PRIVATE
         uart
         i2c
         display
-        ipstack
+#        ipstack
 )
 
 target_compile_definitions(${ProjectName} PRIVATE
@@ -58,9 +60,9 @@ target_link_libraries(${ProjectName}
         pico_stdlib
         hardware_i2c
         FreeRTOS-Kernel-Heap4
-        pico_cyw43_arch_lwip_sys_freertos
-        pico_lwip_mbedtls
-        pico_mbedtls
+#        pico_cyw43_arch_lwip_sys_freertos
+#        pico_lwip_mbedtls
+#        pico_mbedtls
 
 )
 

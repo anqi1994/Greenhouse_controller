@@ -206,7 +206,7 @@ bool run_tls_client_test(const uint8_t *cert, size_t cert_len, const char *serve
 
     //mbedtls_ssl_conf_authmode(&tls_config->conf, MBEDTLS_SSL_VERIFY_OPTIONAL); // original example --> does not work without typecasting
     //mbedtls_ssl_conf_authmode((mbedtls_ssl_config *)tls_config, MBEDTLS_SSL_VERIFY_OPTIONAL); // Do not require certificate verification
-    mbedtls_ssl_conf_authmode((mbedtls_ssl_config *)tls_config, MBEDTLS_SSL_VERIFY_REQUIRED); // require certificate
+    //mbedtls_ssl_conf_authmode((mbedtls_ssl_config *)tls_config, MBEDTLS_SSL_VERIFY_REQUIRED); // require certificate
     //mbedtls_ssl_conf_dbg((mbedtls_ssl_config *)tls_config, tlsdebug, NULL); // this enables lots of TLS internal debugging
 
     TLS_CLIENT_T *state = tls_client_init();

@@ -8,7 +8,7 @@
 #include "ssd1306.h"
 #include "Fan.h"
 #include "modbus/ModbusClient.h"
-#include "uart/PicoOsUart.h"
+#include "CO2Sensor.h"
 
 
 
@@ -106,6 +106,7 @@ void modbus_task(void *param);
 void display_task(void *param);
 void i2c_task(void *param);
 void fan_task(void *param);
+void co2_task(void *param);
 
 extern "C" {
     void tls_test(void);
@@ -150,6 +151,11 @@ int main()
         tskIDLE_PRIORITY+1, nullptr);
 
 #endif
+#if 0
+    xTaskCreate(co2_task, "co2", 512, nullptr,
+        tskIDLE_PRIORITY+1, nullptr);
+#endif
+
     vTaskStartScheduler();
 
     while(true){};
@@ -271,7 +277,6 @@ void i2c_task(void *param) {
 }
 
 // Test task: set fan speed and poll working status.
-// Comment: This runs under FreeRTOS because Fan::isWorking() uses vTaskDelay().
 void fan_task(void *param) {
     // 1) Create UART and Modbus client (use your existing macros)
     auto uart = std::make_shared<PicoOsUart>(UART_NR, UART_TX_PIN, UART_RX_PIN, BAUD_RATE, STOP_BITS);
@@ -289,6 +294,39 @@ void fan_task(void *param) {
         printf("Fan working = %s, speed=%d%%\n", working ? "true" : "false", fan.getSpeed());
         vTaskDelay(pdMS_TO_TICKS(1000));   // Print every 1 s
     }
+}
+
+#ifndef CO2_PPM_IR_ADDR
+#define CO2_PPM_IR_ADDR 0   // TODO: set per datasheet. 0 means 30001
+#endif
+
+#ifndef CO2_SLAVE_ID
+#define CO2_SLAVE_ID 240    // GMP252 Modbus address
+#endif
+
+
+    void co2_task(void *param) {
+        (void)param;
+        auto uart = std::make_shared<PicoOsUart>(UART_NR, UART_TX_PIN, UART_RX_PIN, BAUD_RATE, STOP_BITS);
+        auto rtu  = std::make_shared<ModbusClient>(uart);
+        CO2Sensor sensor(rtu, 240, 0);
+
+
+    for (;;) {
+        bool ok  = sensor.isWorking();
+        int  ppm = sensor.getLastPpm();
+        if (!ok) {
+            printf("CO2 not working or read failed\n");
+        } else {
+            printf("CO2 = %d ppm\n", ppm);
+        }
+        vTaskDelay(pdMS_TO_TICKS(1000));
+    }
+
+
+
+
+
 
 }
 
