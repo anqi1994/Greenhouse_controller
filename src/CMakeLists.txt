@@ -36,8 +36,8 @@ add_executable(${ProjectName}
         display/ssd1306os.cpp
         ipstack/tls_common.h
         ipstack/tls_common.c
-        display/screen_selection.h
-        display/screen_selection.cpp
+        screen_selection.h
+        screen_selection.cpp
         Fan.cpp
         Fan.h
         
