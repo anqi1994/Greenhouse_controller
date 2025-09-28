@@ -11,7 +11,7 @@ class mono_vlsb : public framebuf {
 public:
     mono_vlsb(uint16_t width_, uint16_t height_, uint16_t stride_ = 0, uint16_t buf_offset = 0);
     mono_vlsb(const uint8_t *image, uint8_t width_, uint16_t height_, uint16_t stride_ = 0, uint16_t buf_offset = 0);
-private:
+public:
     void setpixel(uint16_t x, uint16_t y, uint32_t color) override;
     uint32_t getpixel(uint16_t x, uint16_t y) const override;
     void fill_rect(uint16_t x, uint16_t y, uint16_t w, uint16_t h, uint32_t color) override;
