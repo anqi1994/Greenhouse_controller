@@ -7,7 +7,7 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_C_STANDARD 17)
 
 # Name project
-SET(ProjectName rp2040-freertos-irq)
+SET(ProjectName GREENHOUSE)
 
 # Set any variables required for importing libraries
 SET(FREERTOS_KERNEL_PATH ${CMAKE_CURRENT_SOURCE_DIR}/FreeRTOS-KernelV10.6.2)
