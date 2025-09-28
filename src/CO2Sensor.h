@@ -9,47 +9,55 @@
 
 #pragma once
 #include <memory>
-#include "modbus/ModbusClient.h"
-#include "ModbusRegister.h"
+#include <cstdint>
 #include "FreeRTOS.h"
 #include "task.h"
+#include "ModbusRegister.h"
 
-// CO2Sensor: minimal CO₂ sensor wrapper using Modbus registers.
-// Addressing rule: "wire addresses" (zero-based). E.g. 30001 -> wire 0.
+// Lightweight GMP252 CO2 reader.
+// Default register is IR 30258 (wire=257), which is scaled by 10 (raw/10 -> ppm).
 class CO2Sensor {
 public:
-    // Constructor
-    //  - client: shared Modbus RTU client
-    //  - server_address: Modbus slave ID of the CO₂ sensor
-    CO2Sensor(std::shared_ptr<ModbusClient> client, int server_address, int co2_ir_addr);
+    // client: shared ModbusClient transport
+    // slave : Modbus slave id (default 240 for GMP252)
+    // use_scaled: true -> IR30258 (wire 257, raw/10); false -> IR30257 (wire 256, raw)
+    // min_interval_ms: minimal interval between real Modbus reads; within the interval
+    //                  the method returns the last value to avoid bus flooding.
+    CO2Sensor(std::shared_ptr<ModbusClient> client,
+              int slave = 240,
+              bool use_scaled = true,
+              uint32_t min_interval_ms = 200);
 
-    // Read current CO₂ concentration in ppm.
-    // Return: ppm value on success; -1 on error.
-    int readPpm();
+    // Read CO2 in ppm.
+    // Returns last successful value on failure.
+    // Simple retry & debouncing are applied.
+    int readPpm(int retries = 2);
 
-    // Simple working check: read twice with a short delay.
-    // If both reads are <= 0, we consider the sensor "not working".
-    bool isWorking();
+    // Last raw register value (for debugging).
+    int lastRaw() const { return last_raw_; }
 
-    // Get last ppm value cached by readPpm()/isWorking().
-    int getLastPpm() const { return last_ppm_; }
+    // Last successful ppm value.
+    int lastPpm() const { return last_ppm_; }
 
-    // Get last working status decided by isWorking().
-    bool checkWorkingStatus() const { return is_working_; }
+    // Whether the last read succeeded.
+    bool isWorking() const { return last_ok_; }
 
-    // Optional: read temperature in Celsius if your device supports it.
-    // Return: temperature * 0.1 or real °C depending on your register map; -100000 on error.
-    int readTemperatureRaw(); // keep "raw" because scaling varies by device
+    // Change minimal sampling interval (milliseconds).
+    void setMinIntervalMs(uint32_t ms) { min_interval_ticks_ = pdMS_TO_TICKS(ms); }
+
+    // Switch between scaled and integer register (effective from the next read).
+    void setUseScaled(bool use_scaled);
 
 private:
-    // Registers (wire addresses, zero-based). Adjust them to your device map:
-    //  - co2_ppm_: Input Register at wire 0 -> 30001
-    //  - temp_ir_: Input Register at wire 1 -> 30002 (optional)
-    //  - status_hr_: Holding Register at wire 10 -> 40011 (optional, not used in logic here)
-    ModbusRegister co2_register;
-    ModbusRegister temp_ir_;
-    ModbusRegister status_hr_;
+    std::shared_ptr<ModbusClient> client_;
+    int  slave_;
+    bool scaled_;
+    ModbusRegister reg_;            // Bound input register (wire 256/257, isHolding=false)
 
-    int  last_ppm_{-1};
-    bool is_working_{false};
+    // State
+    int last_ppm_  = 0;
+    int last_raw_  = -1;
+    bool last_ok_  = false;
+    TickType_t last_read_tick_   = 0;
+    TickType_t min_interval_ticks_;
 };

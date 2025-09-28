@@ -1,59 +1,68 @@
-// CO2Sensor.cpp — no-exceptions build (-fno-exceptions friendly)
-// Addressing rule: wire addresses (zero-based). Example: 30001 -> wire 0.
-
 #include "CO2Sensor.h"
+#include <cstring>
 
-// Constructor
-// - client: shared Modbus RTU client
-// - server_address: Modbus slave ID of the CO₂ sensor
-// Registers used here are placeholders; adjust to your device map:
-//   IR 30001 (wire 0): CO₂ ppm
-//   IR 30002 (wire 1): Temperature (optional)
-//   HR 40011 (wire 10): Status word (optional)
-CO2Sensor::CO2Sensor(std::shared_ptr<ModbusClient> client, int server_address, int co2_ir_address)
-    : co2_register(client, server_address, 0, /*isHolding=*/false),
-      temp_ir_(client, server_address, 1, /*isHolding=*/false),
-      status_hr_(client, server_address, 10, /*isHolding=*/true) {
-    // Initialize cached fields
-    last_ppm_   = -1;
-    is_working_ = false;
+// GMP252 input registers (Function 04):
+// IR 30257 -> wire 256: 16-bit signed integer, ppm (0..~32000)
+// IR 30258 -> wire 257: 16-bit signed integer, scaled (raw/10 -> ppm, 0..~320000)
+
+static constexpr int WIRE_CO2_INT    = 256; // 30257 - 30001
+static constexpr int WIRE_CO2_SCALED = 257; // 30258 - 30001
+
+CO2Sensor::CO2Sensor(std::shared_ptr<ModbusClient> client,
+                     int slave,
+                     bool use_scaled,
+                     uint32_t min_interval_ms)
+    : client_(std::move(client)),
+      slave_(slave),
+      scaled_(use_scaled),
+      reg_(client_, slave_, use_scaled ? WIRE_CO2_SCALED : WIRE_CO2_INT),
+      min_interval_ticks_(pdMS_TO_TICKS(min_interval_ms))
+{
 }
 
-// Read CO₂ concentration once.
-// Return: ppm (>=0) on success; -1 on error (e.g., Modbus timeout).
-int CO2Sensor::readPpm() {
-    // ModbusRegister::read() should return an int; negative means failure by convention.
-    int v = co2_register.read();
-    if (v < 0) {
-        last_ppm_ = -1;
-        return -1;
+void CO2Sensor::setUseScaled(bool use_scaled)
+{
+    scaled_ = use_scaled;
+    // Rebind the register to the chosen wire address
+    reg_ = ModbusRegister(client_, slave_,
+                          scaled_ ? WIRE_CO2_SCALED : WIRE_CO2_INT);
+}
+
+int CO2Sensor::readPpm(int retries)
+{
+    const TickType_t now = xTaskGetTickCount();
+
+    // Rate limiting: return last value if called too frequently
+    if (last_read_tick_ != 0 && (now - last_read_tick_) < min_interval_ticks_) {
+        return last_ppm_;
     }
-    // NOTE: If your device applies scaling (e.g., ppm * 1, 10, or 100), convert here.
-    last_ppm_ = v;
+
+    // Perform read with simple retry
+    int raw = -1;
+    for (int i = 0; i <= retries; ++i) {
+        raw = reg_.read();          // Negative means transport/protocol error in your stack
+        if (raw >= 0) break;
+        vTaskDelay(pdMS_TO_TICKS(50)); // small backoff between retries
+    }
+
+    last_read_tick_ = now;
+
+    if (raw < 0) {
+        // Keep previous value on failure
+        last_ok_ = false;
+        return last_ppm_;
+    }
+
+    last_raw_ = raw;
+
+    // Convert raw to ppm according to selected register
+    int ppm = scaled_ ? (raw / 10) : raw;   // integer division; GMP252 scaled is 0.1 ppm units
+
+    // Basic sanity clamp (adjust bounds as needed by your project)
+    if (ppm < 0)      ppm = 0;
+    if (ppm > 15000)  ppm = 15000;          // your spec upper limit is 1500 setpoint, but sensor can read higher
+
+    last_ppm_ = ppm;
+    last_ok_  = true;
     return last_ppm_;
-}
-
-// Minimal liveness check by two reads with a short wait.
-// If both reads are <= 0, the sensor is considered "not working".
-bool CO2Sensor::isWorking() {
-    int first = readPpm();
-    if (first <= 0) {
-        // Keep delay inside the class to mirror your Fan-style API.
-        vTaskDelay(pdMS_TO_TICKS(200));  // Increase if your sensor updates slowly
-        int second = readPpm();
-        if (second <= 0) {
-            is_working_ = false;
-            return is_working_;
-        }
-    }
-    is_working_ = true;
-    return is_working_;
-}
-
-// Optional: read raw temperature value (device-specific scaling).
-// Return: raw value on success; -100000 on error.
-int CO2Sensor::readTemperatureRaw() {
-    int v = temp_ir_.read();
-    if (v < 0) return -100000;
-    return v;
 }

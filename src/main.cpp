@@ -146,12 +146,12 @@ int main()
     xTaskCreate(tls_task, "tls test", 6000, (void *) nullptr,
                 tskIDLE_PRIORITY + 1, nullptr);
 #endif
-#if 1
+#if 0
     xTaskCreate(fan_task, "Fan", 1024, nullptr,
         tskIDLE_PRIORITY+1, nullptr);
 
 #endif
-#if 0
+#if 1
     xTaskCreate(co2_task, "co2", 512, nullptr,
         tskIDLE_PRIORITY+1, nullptr);
 #endif
@@ -207,6 +207,7 @@ void modbus_task(void *param) {
     auto rtu_client{std::make_shared<ModbusClient>(uart)};
     ModbusRegister rh(rtu_client, 241, 256);
     ModbusRegister t(rtu_client, 241, 257);
+    ModbusRegister co2_int(rtu_client, 240, 256);
     ModbusRegister produal(rtu_client, 1, 0);
     produal.write(100);
     vTaskDelay((100));
@@ -219,6 +220,8 @@ void modbus_task(void *param) {
         printf("RH=%5.1f%%\n", rh.read() / 10.0);
         vTaskDelay(5);
         printf("T =%5.1f%%\n", t.read() / 10.0);
+        int16_t ppm = (int16_t)co2_int.read();
+        printf("CO2 = %d ppm\n", (int)ppm);
         vTaskDelay(3000);
 #endif
     }
@@ -276,58 +279,23 @@ void i2c_task(void *param) {
 
 }
 
-// Test task: set fan speed and poll working status.
-void fan_task(void *param) {
-    // 1) Create UART and Modbus client (use your existing macros)
-    auto uart = std::make_shared<PicoOsUart>(UART_NR, UART_TX_PIN, UART_RX_PIN, BAUD_RATE, STOP_BITS);
+void co2_task(void *param) {
+    // In your task:
+    auto uart = std::make_shared<PicoOsUart>(UART_NR, UART_TX_PIN, UART_RX_PIN, 9600, /*STOP_BITS=*/2);
     auto rtu  = std::make_shared<ModbusClient>(uart);
 
-    // 2) Bind fan at slave ID 1
-    Fan fan(rtu, 1);
-
-    // 3) Set a conservative speed first (avoid full power at bring-up)
-    fan.setSpeed(30);  // 30% as a safe start
-
-    // 4) Poll status every 1 s
-    for (;;) {
-        bool working = fan.isWorking();    // Uses vTaskDelay(100 ms) inside the class
-        printf("Fan working = %s, speed=%d%%\n", working ? "true" : "false", fan.getSpeed());
-        vTaskDelay(pdMS_TO_TICKS(1000));   // Print every 1 s
-    }
-}
-
-#ifndef CO2_PPM_IR_ADDR
-#define CO2_PPM_IR_ADDR 0   // TODO: set per datasheet. 0 means 30001
-#endif
-
-#ifndef CO2_SLAVE_ID
-#define CO2_SLAVE_ID 240    // GMP252 Modbus address
-#endif
-
-
-    void co2_task(void *param) {
-        (void)param;
-        auto uart = std::make_shared<PicoOsUart>(UART_NR, UART_TX_PIN, UART_RX_PIN, BAUD_RATE, STOP_BITS);
-        auto rtu  = std::make_shared<ModbusClient>(uart);
-        CO2Sensor sensor(rtu, 240, 0);
-
+    // Prefer IR30257 on the simulator; set use_scaled=false.
+    // On real GMP252 you may use scaled=true (IR30258) if desired.
+    CO2Sensor co2(rtu, /*slave=*/240, /*use_scaled=*/false, /*min_interval_ms=*/200);
 
     for (;;) {
-        bool ok  = sensor.isWorking();
-        int  ppm = sensor.getLastPpm();
-        if (!ok) {
-            printf("CO2 not working or read failed\n");
+        int ppm = co2.readPpm();
+        if (!co2.isWorking()) {
+            printf("CO2 read failed, keep last=%d ppm\n", co2.lastPpm());
         } else {
-            printf("CO2 = %d ppm\n", ppm);
+            printf("CO2 = %d ppm (raw=%d)\n", ppm, co2.lastRaw());
         }
         vTaskDelay(pdMS_TO_TICKS(1000));
     }
-
-
-
-
-
-
 }
-
 
