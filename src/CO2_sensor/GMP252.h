@@ -15,9 +15,9 @@
 #include "ModbusRegister.h"
 
 
-class CO2Sensor{
+class GMP252{
 public:
-    CO2Sensor(std::shared_ptr<ModbusClient> client, int server_address);
+    GMP252(std::shared_ptr<ModbusClient> client, int server_address);
 
     uint16_t read_value();
 

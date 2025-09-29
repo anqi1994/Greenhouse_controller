@@ -1,14 +1,14 @@
-#include "CO2Sensor.h"
+#include "GMP252.h"
 #include <cstring>
 #include <utility>
 
-CO2Sensor::CO2Sensor(std::shared_ptr<ModbusClient> client, int server_address)
+GMP252::GMP252(std::shared_ptr<ModbusClient> client, int server_address)
     :
     //register_address 256.
     CO2_read_Register(client, server_address,256,true){}
 
 
-uint16_t CO2Sensor::read_value(){
+uint16_t GMP252::read_value(){
     read_CO2_value = CO2_read_Register.read();
     return read_CO2_value;
 }

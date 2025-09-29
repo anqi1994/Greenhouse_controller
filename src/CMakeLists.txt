@@ -34,19 +34,20 @@ add_executable(${ProjectName}
 #        display/ssd1306.h
         display/ssd1306os.h
         display/ssd1306os.cpp
-        Fan.cpp
-        Fan.h
-        CO2Sensor.cpp
-        CO2Sensor.h
+        Fan/Produal.cpp
+        Fan/Produal.h
+        CO2_sensor/GMP252.cpp
+        CO2_sensor/GMP252.h
         Control_task/Control.cpp
-        TemHumSensor.cpp
-        TemHumSensor.cpp
-        TemHumSensor.h
+        T_RH_sensor/HMP60.cpp
+        T_RH_sensor/HMP60.cpp
+        T_RH_sensor/HMP60.h
         Structs.h
         Structs.h
-        GPIO.cpp
-        Valve.cpp
-        Valve.h
+        GPIO/GPIO.cpp
+        Valve/Valve.cpp
+        Valve/Valve.h
+        QueueTest.cpp
 )
 
 target_include_directories(${ProjectName} PRIVATE

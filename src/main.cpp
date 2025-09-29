@@ -1,4 +1,5 @@
 #include <iostream>
+#include <QueueTest.h>
 #include <sstream>
 #include <Control_task/Control.h>
 #include <pico/stdio.h>
@@ -10,9 +11,9 @@
 #include "hardware/gpio.h"
 #include "PicoOsUart.h"
 #include "ssd1306.h"
-#include "Fan.h"
 #include "modbus/ModbusClient.h"
-#include "CO2Sensor.h"
+#include "Structs.h"
+
 
 
 
@@ -296,6 +297,7 @@ void co2_task(void *param) {
 
 TimerHandle_t measure_timer;
 SemaphoreHandle_t measure_semaphore;
+QueueHandle_t measure_queue;
 
 void timer_callback(TimerHandle_t xTimer) {
     xSemaphoreGive(measure_semaphore);
@@ -304,12 +306,14 @@ void timer_callback(TimerHandle_t xTimer) {
 int main() {
     stdio_init_all();
 
-    measure_timer = xTimerCreate("measure_timer", pdMS_TO_TICKS(1000), pdTRUE, nullptr, timer_callback);
+    measure_timer = xTimerCreate("measure_timer", pdMS_TO_TICKS(5000), pdTRUE, nullptr, timer_callback);
     measure_semaphore = xSemaphoreCreateBinary();
+    measure_queue = xQueueCreate(10, sizeof(Monitored_data));
 
     xTimerStart(measure_timer, 0);
 
-    Control control_task(measure_semaphore);
+    Control control_task(measure_semaphore, measure_queue);
+    QueueTest test(measure_queue);
 
     vTaskStartScheduler();
 

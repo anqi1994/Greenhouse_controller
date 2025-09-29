@@ -1,8 +1,8 @@
 #include "Control.h"
 
 
-Control::Control(SemaphoreHandle_t timer, uint32_t stack_size, UBaseType_t priority) :
-    timer_semphr(timer) {
+Control::Control(SemaphoreHandle_t timer, QueueHandle_t to_UI, uint32_t stack_size, UBaseType_t priority) :
+    timer_semphr(timer), to_UI(to_UI) {
 
     xTaskCreate(task_wrap, name, stack_size, this, priority, nullptr);
 }
@@ -19,12 +19,12 @@ void Control::task_impl() {
 
     // sensor objects
     //CO2Sensor co2(rtu_client, 240, false);
-    CO2Sensor co2(rtu_client, 240);
-    TemHumSensor tem_hum_sensor(rtu_client,241);
+    GMP252 co2(rtu_client, 240);
+    HMP60 tem_hum_sensor(rtu_client,241);
 
     //actuators: valve and fan
-    Valve valve (27);
-    Fan fan(rtu_client, 1);
+    Valve valve(27);
+    Produal fan(rtu_client, 1);
 
     while(true) {
         //monitored data is saved in structs.h
@@ -44,13 +44,14 @@ void Control::task_impl() {
             //getting monitored data from the sensors (GMP252- CO2, HMP60 -RH & TEM) -without Error checking
             data.co2_val = co2.read_value();
             printf("co2_val: %u\n", data.co2_val);
-            vTaskDelay(pdMS_TO_TICKS(100));
+            //vTaskDelay(pdMS_TO_TICKS(100));
             data.temperature = tem_hum_sensor.read_tem();
-            printf("temperature: %u\n", data.temperature);
-            vTaskDelay(pdMS_TO_TICKS(100));
+            printf("temperature: %.1f\n", data.temperature);
+            //vTaskDelay(pdMS_TO_TICKS(100));
             data.humidity = tem_hum_sensor.read_hum();
-            printf("humidity: %u\n", data.humidity);
-            vTaskDelay(pdMS_TO_TICKS(100));
+            printf("humidity: %.1f\n", data.humidity);
+            //vTaskDelay(pdMS_TO_TICKS(100));
+            xQueueSendToBack(to_UI, &data, portMAX_DELAY);
 
             //main co2 level control logic
             if (data.co2_val >= max_co2) {
@@ -62,17 +63,24 @@ void Control::task_impl() {
                     printf("fan failed\n");
                     fan_working = false;
                 }
-            } else if(data.co2_val <= co2_set) {
-                //need to add more in this section to test if valve works.
-            }else{
+            } else{
                 fan.setSpeed(0);
+            }
+
+            if(data.co2_val <= co2_set) {
+                //need to add more in this section to test if valve works.
+                valve.open();
+                vTaskDelay(pdMS_TO_TICKS(1000));
+                valve.close();
+            } else {
+                valve.close();
             }
         }
     }
 }
 
 //check if fan is running after two reads
-bool Control::check_fan(Fan &fan){
+bool Control::check_fan(Produal &fan){
     int first = fan.returnPulse();
     printf("fan.returnPulse(): %d\n", first);
     if(first == 0 && fan.getSpeed() > 0){

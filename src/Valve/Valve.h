@@ -1,6 +1,6 @@
 #ifndef VALVE_H
 #define VALVE_H
-#include "GPIO.h"
+#include "GPIO/GPIO.h"
 
 class Valve{
 public:

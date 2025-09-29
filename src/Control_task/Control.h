@@ -10,26 +10,28 @@
 #include "FreeRTOS.h"
 #include "semphr.h"
 #include "task.h"
-#include "Fan.h"
-#include "CO2Sensor.h"
-#include "TemHumSensor.h"
-#include "Valve.h"
+#include "Fan/Produal.h"
+#include "CO2_sensor/GMP252.h"
+#include "T_RH_sensor/HMP60.h"
+#include "Valve/Valve.h"
 #include "Structs.h"
+
 
 
 class Control {
 public:
-    Control(SemaphoreHandle_t timer, uint32_t stack_size = 512, UBaseType_t priority = tskIDLE_PRIORITY + 1);
+    Control(SemaphoreHandle_t timer, QueueHandle_t to_UI, uint32_t stack_size = 512, UBaseType_t priority = tskIDLE_PRIORITY + 1);
     static void task_wrap(void *pvParameters);
 
 
 private:
     // Private functions
     void task_impl();
-    bool check_fan(Fan &fan);
+    bool check_fan(Produal &fan);
 
     SemaphoreHandle_t timer_semphr;
     TaskHandle_t control_task;
+    QueueHandle_t to_UI;
     const char *name = "CONTROL";
     uint max_co2 = 2000;
     bool fan_working = true;

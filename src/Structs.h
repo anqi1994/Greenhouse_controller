@@ -4,8 +4,8 @@
 
 struct Monitored_data{
     uint16_t co2_val;
-    uint16_t temperature;
-    uint16_t humidity;
+    double temperature;
+    double humidity;
     uint16_t pressure;
 };
 
