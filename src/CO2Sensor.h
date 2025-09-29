@@ -25,13 +25,12 @@ public:
     //                  the method returns the last value to avoid bus flooding.
     CO2Sensor(std::shared_ptr<ModbusClient> client,
               int slave = 240,
-              bool use_scaled = true,
-              uint32_t min_interval_ms = 200);
+              bool use_scaled = true);
 
     // Read CO2 in ppm.
     // Returns last successful value on failure.
     // Simple retry & debouncing are applied.
-    int readPpm(int retries = 2);
+    int readPpm();
 
     // Last raw register value (for debugging).
     int lastRaw() const { return last_raw_; }
@@ -41,9 +40,6 @@ public:
 
     // Whether the last read succeeded.
     bool isWorking() const { return last_ok_; }
-
-    // Change minimal sampling interval (milliseconds).
-    void setMinIntervalMs(uint32_t ms) { min_interval_ticks_ = pdMS_TO_TICKS(ms); }
 
     // Switch between scaled and integer register (effective from the next read).
     void setUseScaled(bool use_scaled);
@@ -58,6 +54,4 @@ private:
     int last_ppm_  = 0;
     int last_raw_  = -1;
     bool last_ok_  = false;
-    TickType_t last_read_tick_   = 0;
-    TickType_t min_interval_ticks_;
 };
