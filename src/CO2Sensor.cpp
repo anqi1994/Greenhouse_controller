@@ -1,11 +1,23 @@
 #include "CO2Sensor.h"
 #include <cstring>
+#include <utility>
+
+CO2Sensor::CO2Sensor(std::shared_ptr<ModbusClient> client, int server_address)
+    :
+    //register_address 256.
+    CO2_read_Register(client, server_address,256,true){}
+
+
+uint16_t CO2Sensor::read_value(){
+    read_CO2_value = CO2_read_Register.read();
+    return read_CO2_value;
+}
 
 // GMP252 input registers (Function 04):
 // IR 30257 -> wire 256: 16-bit signed integer, ppm (0..~32000)
 // IR 30258 -> wire 257: 16-bit signed integer, scaled (raw/10 -> ppm, 0..~320000)
 
-static constexpr int WIRE_CO2_INT    = 256; // 30257 - 30001
+/*static constexpr int WIRE_CO2_INT    = 256; // 30257 - 30001
 static constexpr int WIRE_CO2_SCALED = 257; // 30258 - 30001
 
 CO2Sensor::CO2Sensor(std::shared_ptr<ModbusClient> client,
@@ -49,4 +61,5 @@ int CO2Sensor::readPpm()
     last_ppm_ = ppm;
     last_ok_  = true;
     return last_ppm_;
-}
+}*/
+

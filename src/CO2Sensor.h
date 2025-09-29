@@ -14,9 +14,22 @@
 #include "task.h"
 #include "ModbusRegister.h"
 
+
+class CO2Sensor{
+public:
+    CO2Sensor(std::shared_ptr<ModbusClient> client, int server_address);
+
+    uint16_t read_value();
+
+private:
+    ModbusRegister CO2_read_Register;
+    uint16_t read_CO2_value = 0;
+};
+
+
 // Lightweight GMP252 CO2 reader.
 // Default register is IR 30258 (wire=257), which is scaled by 10 (raw/10 -> ppm).
-class CO2Sensor {
+/*class CO2Sensor {
 public:
     // client: shared ModbusClient transport
     // slave : Modbus slave id (default 240 for GMP252)
@@ -54,4 +67,6 @@ private:
     int last_ppm_  = 0;
     int last_raw_  = -1;
     bool last_ok_  = false;
-};
+};*/
+
+

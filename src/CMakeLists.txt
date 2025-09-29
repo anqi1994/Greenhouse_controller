@@ -39,6 +39,14 @@ add_executable(${ProjectName}
         CO2Sensor.cpp
         CO2Sensor.h
         Control_task/Control.cpp
+        TemHumSensor.cpp
+        TemHumSensor.cpp
+        TemHumSensor.h
+        Structs.h
+        Structs.h
+        GPIO.cpp
+        Valve.cpp
+        Valve.h
 )
 
 target_include_directories(${ProjectName} PRIVATE
