@@ -48,6 +48,8 @@ add_executable(${ProjectName}
         Valve/Valve.cpp
         Valve/Valve.h
         QueueTest.cpp
+        QueueTestTwo.cpp
+        QueueTestTwo.h
 )
 
 target_include_directories(${ProjectName} PRIVATE

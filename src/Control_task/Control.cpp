@@ -1,8 +1,8 @@
 #include "Control.h"
 
 
-Control::Control(SemaphoreHandle_t timer, QueueHandle_t to_UI, uint32_t stack_size, UBaseType_t priority) :
-    timer_semphr(timer), to_UI(to_UI) {
+Control::Control(SemaphoreHandle_t timer, QueueHandle_t to_UI, QueueHandle_t to_Network, QueueHandle_t to_CO2,uint32_t stack_size, UBaseType_t priority) :
+    timer_semphr(timer), to_UI(to_UI), to_Network(to_Network) ,to_CO2 (to_CO2){
 
     xTaskCreate(task_wrap, name, stack_size, this, priority, nullptr);
 }
@@ -25,12 +25,15 @@ void Control::task_impl() {
     //actuators: valve and fan
     Valve valve(27);
     Produal fan(rtu_client, 1);
+    //this is just for testing, co2_set needs to be retrieved from UI/network.
+    uint co2_set = 1500;
 
     while(true) {
-        //monitored data is saved in structs.h
-        Monitored_data data;
-        //this is just for testing, co2_set needs to be retrieved from UI/network.
-        uint co2_set = 1500;
+        //monitored data and message type are saved in structs.h
+        Monitored_data data{};
+        MessageType msg = MONITORED_DATA;
+        Message message{};
+        uint received_data;
 
         //main CO2 control logic which is triggered by the timer for getting monitored data.
         if (xSemaphoreTake(timer_semphr, portMAX_DELAY) == pdTRUE) {
@@ -51,7 +54,12 @@ void Control::task_impl() {
             data.humidity = tem_hum_sensor.read_hum();
             printf("humidity: %.1f\n", data.humidity);
             //vTaskDelay(pdMS_TO_TICKS(100));
-            xQueueSendToBack(to_UI, &data, portMAX_DELAY);
+            message.type = msg;
+            message.data = data;
+            xQueueSendToBack(to_UI, &message, portMAX_DELAY);
+            printf("QUEUE from co2 to UI\n");
+            xQueueSendToBack(to_Network, &message, portMAX_DELAY);
+            printf("QUEUE from co2 to network\n");
 
             //main co2 level control logic
             if (data.co2_val >= max_co2) {
@@ -76,6 +84,18 @@ void Control::task_impl() {
                 valve.close();
             }
         }
+
+        //get data from UI and network. data type received: only uint CO2 set level.
+        if(xQueueReceive(to_CO2, &received_data, 0) == pdTRUE){
+            if(received_data < max_co2){
+                co2_set = received_data;
+                printf("co2: %u\n", received_data);
+            }else
+            {
+                printf("co2 set is not in acceptable range.\n");
+            }
+        }
+
     }
 }
 

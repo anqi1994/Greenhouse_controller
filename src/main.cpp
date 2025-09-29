@@ -10,11 +10,10 @@
 #include "timers.h"
 #include "hardware/gpio.h"
 #include "PicoOsUart.h"
+#include "QueueTestTwo.h"
 #include "ssd1306.h"
 #include "modbus/ModbusClient.h"
 #include "Structs.h"
-
-
 
 
 #include "hardware/timer.h"
@@ -297,7 +296,9 @@ void co2_task(void *param) {
 
 TimerHandle_t measure_timer;
 SemaphoreHandle_t measure_semaphore;
-QueueHandle_t measure_queue;
+QueueHandle_t to_control;
+QueueHandle_t to_UI;
+QueueHandle_t to_network;
 
 void timer_callback(TimerHandle_t xTimer) {
     xSemaphoreGive(measure_semaphore);
@@ -308,12 +309,17 @@ int main() {
 
     measure_timer = xTimerCreate("measure_timer", pdMS_TO_TICKS(5000), pdTRUE, nullptr, timer_callback);
     measure_semaphore = xSemaphoreCreateBinary();
-    measure_queue = xQueueCreate(10, sizeof(Monitored_data));
+    to_control = xQueueCreate(10, sizeof(uint));
+    to_UI = xQueueCreate(10, sizeof(Message));
+    to_network = xQueueCreate(10, sizeof(Message));
+
+
 
     xTimerStart(measure_timer, 0);
 
-    Control control_task(measure_semaphore, measure_queue);
-    QueueTest test(measure_queue);
+    Control control_task(measure_semaphore, to_UI,to_network,to_control);
+    QueueTest test(to_control,to_network,to_UI);
+    QueueTestTwo testTwo(to_control,to_UI,to_network);
 
     vTaskStartScheduler();
 
