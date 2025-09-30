@@ -12,23 +12,19 @@
 #include <cstdio>
 
 #include "PicoI2C.h"
-
 #include "blinker.h"
-
 #include "event_groups.h"
-
 #include "global_definition.h"
 #include "screen_selection.h"
 #include "eeprom.h"
 #include "ModbusClient.h"
 #include "ModbusRegister.h"
+
 extern "C" {
     uint32_t read_runtime_ctr(void) {
         return timer_hw->timerawl;
     }
 }
-
-#include "tls_common.h"
 
 void display_task(void *param)
 {
@@ -37,6 +33,8 @@ void display_task(void *param)
     currentScreen screen(display);
     rotBtnData_str temp_data;
     wifi_char_pos_str char_pos_X;
+
+    // Show welcome screen
     screen.welcome();
     vTaskDelay(pdMS_TO_TICKS(5000));
     screen.screenSelection();
@@ -96,10 +94,15 @@ void hw_ISR_CB(uint gpio, uint32_t events){
 
 void gpio_task(void *param) {
     (void) param;
+
+    // Initialize GPIOs
     gpio_init(rotA);
     gpio_set_dir(rotA, GPIO_IN);
+    gpio_pull_up(rotA);  // Add pull-up for stability
+
     gpio_init(rotB);
     gpio_set_dir(rotB, GPIO_IN);
+    gpio_pull_up(rotB);  // Add pull-up for stability
 
     gpio_init(led1);
     gpio_set_dir(led1, GPIO_OUT);
@@ -110,10 +113,12 @@ void gpio_task(void *param) {
     gpio_init(ok_btn);
     gpio_set_dir(ok_btn, GPIO_IN);
     gpio_pull_up(ok_btn);
+
     gpio_init(back_btn);
     gpio_set_dir(back_btn, GPIO_IN);
     gpio_pull_up(back_btn);
 
+    // Set up interrupts
     gpio_set_irq_enabled_with_callback(rotA, GPIO_IRQ_EDGE_FALL, true, &hw_ISR_CB);
     gpio_set_irq_enabled_with_callback(ok_btn, GPIO_IRQ_EDGE_FALL, true, &hw_ISR_CB);
     gpio_set_irq_enabled_with_callback(back_btn, GPIO_IRQ_EDGE_FALL, true, &hw_ISR_CB);
@@ -135,6 +140,7 @@ void gpio_task(void *param) {
                     isEditing = false;
                     xQueueSend(gpio_data_q, &rot_btn_data, 0);
                     break;
+
                 case OK_PRESS:
                     gpio_set_irq_enabled_with_callback(ok_btn, GPIO_IRQ_EDGE_FALL, false, &hw_ISR_CB);
                     if (time_us_64() - lastPressTime > 30000){ //debounce 30ms
@@ -201,7 +207,6 @@ void gpio_task(void *param) {
                                     }
                                     printf("ssid %s\n", SSID_WIFI);
                                     printf("pass %s\n", PASS_WIFI);
-                                    //wifi_screen_option = !wifi_screen_option;
                                     xQueueSend(gpio_data_q, &rot_btn_data, 0);
                                 } else {    //short press to confirm character
                                     char c[2];
@@ -248,6 +253,7 @@ void gpio_task(void *param) {
                     while (!gpio_get(ok_btn)) vTaskDelay(pdMS_TO_TICKS(10));
                     gpio_set_irq_enabled_with_callback(ok_btn, GPIO_IRQ_EDGE_FALL, true, &hw_ISR_CB);
                     break;
+
                 case ROT_CW:
                     if (rot_btn_data.screen_type == SELECTION_SCR){
                         selection_screen_option = (selection_screen_option + 1) % 3;
@@ -267,6 +273,7 @@ void gpio_task(void *param) {
                         }
                     }
                     break;
+
                 case ROT_CCW:
                     if (rot_btn_data.screen_type == SELECTION_SCR){
                         selection_screen_option = (selection_screen_option + 2) % 3;
@@ -311,11 +318,13 @@ void modbus_task(void *param) {
         vTaskDelay(pdMS_TO_TICKS(5));
         xEventGroupSetBits(co2EventGroup, CO2_CHANGE_BIT_LCD);
         vTaskDelay(pdMS_TO_TICKS(100));
+
         // a loop to wait for 3s to start over
         int count = 0;
         while (++count < 300) {
             co2 = mb_co2.read();
             vTaskDelay(pdMS_TO_TICKS(10));
+
             if (co2 > CO2_LIMIT) {
                 // start the fan
                 mb_fanSpeed.write(500);
@@ -337,6 +346,7 @@ void modbus_task(void *param) {
                 co2 = mb_co2.read();
                 vTaskDelay(pdMS_TO_TICKS(5));
             }
+
             if ((co2 - OFFSET) > setpoint) {
                 // start the fan
                 mb_fanSpeed.write(500);
@@ -357,6 +367,7 @@ void modbus_task(void *param) {
                 co2 = mb_co2.read();
                 vTaskDelay(pdMS_TO_TICKS(5));
             }
+
             while ((co2 + OFFSET) < setpoint) {
                 // open co2 valve for 1s
                 gpio_put(valve, 1);
@@ -393,7 +404,8 @@ int main() {
     stdio_init_all();
     printf("\nBoot\n");
 
-    setpoint_q = xQueueCreate(QUEUE_SIZE, sizeof (setpoint));
+    // Create queues and synchronization objects BEFORE tasks
+    setpoint_q = xQueueCreate(QUEUE_SIZE, sizeof(setpoint));
     wifiCharPos_q = xQueueCreate(QUEUE_SIZE, sizeof(wifi_char_pos_str));
     gpio_data_q = xQueueCreate(QUEUE_SIZE, sizeof(rotBtnData_str));
     gpio_action_q = xQueueCreate(QUEUE_SIZE, sizeof(gpio_t));
@@ -401,13 +413,22 @@ int main() {
     wifiEventGroup = xEventGroupCreate();
     co2EventGroup = xEventGroupCreate();
 
+    // Verify queue creation
+    if (!gpio_data_q || !gpio_action_q || !wifiCharPos_q) {
+        printf("ERROR: Failed to create queues!\n");
+        while(1);
+    }
 
-    xTaskCreate(display_task, "SSD1306", 512, nullptr, tskIDLE_PRIORITY + 1, nullptr);
-    //xTaskCreate(blink_task, "LED_1", 256, (void *) &lp1, tskIDLE_PRIORITY + 1, nullptr);
+    // Create tasks with proper priority and stack size
+    xTaskCreate(gpio_task, "gpio task", 512, nullptr, tskIDLE_PRIORITY + 2, nullptr);  // Higher priority
+    xTaskCreate(display_task, "SSD1306", 1024, nullptr, tskIDLE_PRIORITY + 1, nullptr);  // Larger stack
     xTaskCreate(modbus_task, "Modbus", 512, nullptr, tskIDLE_PRIORITY + 1, nullptr);
-    xTaskCreate(gpio_task, "gpio task", 256, nullptr, tskIDLE_PRIORITY + 1, nullptr);
+    // xTaskCreate(blink_task, "LED_1", 256, (void *) &lp1, tskIDLE_PRIORITY + 1, nullptr);
 
+    printf("Starting FreeRTOS scheduler...\n");
     vTaskStartScheduler();
 
+    // Should never reach here
+    printf("ERROR: Scheduler failed to start!\n");
     while(true){};
 }
