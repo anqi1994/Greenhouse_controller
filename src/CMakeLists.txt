@@ -50,6 +50,10 @@ add_executable(${ProjectName}
         QueueTest.cpp
         QueueTestTwo.cpp
         QueueTestTwo.h
+#        EEPROM/EEPROM.cpp
+#        EEPROM/EEPROM.h
+        Pressure_sensor/SDP610.cpp
+        Pressure_sensor/SDP610.h
 )
 
 target_include_directories(${ProjectName} PRIVATE

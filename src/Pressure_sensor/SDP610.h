@@ -6,13 +6,12 @@
 
 class SDP610 {
 public:
-    SDP610();
-    uint read();
-    void printHex(int16_t value);
-    void scanI2C();
+    SDP610(std::shared_ptr<PicoI2C> i2cbus, uint8_t address=0x40);
+    double read();
 private:
-    std::shared_ptr<PicoI2C> i2cbus;
-    uint8_t addr = 0x40;
+    std::shared_ptr<PicoI2C> i2c;
+    uint8_t addr;
+    int16_t read_raw();
 };
 
 

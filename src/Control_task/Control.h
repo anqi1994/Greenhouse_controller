@@ -13,6 +13,7 @@
 #include "Fan/Produal.h"
 #include "CO2_sensor/GMP252.h"
 #include "T_RH_sensor/HMP60.h"
+#include "Pressure_sensor/SDP610.h"
 #include "Valve/Valve.h"
 #include "Structs.h"
 

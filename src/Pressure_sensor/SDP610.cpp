@@ -1,42 +1,41 @@
 #include "SDP610.h"
 
-SDP610::SDP610() {
-    i2cbus = std::make_shared<PicoI2C>(1, 100000);
+SDP610::SDP610(std::shared_ptr<PicoI2C> i2cbus, uint8_t address):
+    i2c(std::move(i2cbus)), addr(address) {
 
-    vTaskDelay(pdMS_TO_TICKS(100));
+    uint8_t reset_cmd = 0x06;
+    i2c->write(addr, &reset_cmd, 1);
+    vTaskDelay(pdMS_TO_TICKS(20));
 
-    printf("SDP610 initialized\n");
+    printf("SDP610 initialized at address 0x%02X\n", addr);
+
 }
 
-uint SDP610::read() {
+int16_t SDP610::read_raw() {
+    // command to take measurements from the SDP610 – 125Pa datasheet
+    uint8_t command = 0xF1;
+
+    auto write = i2c->write(addr, &command, 1);
+    if (write != 1) {
+        printf("SDP610 instruction failed\n");
+        return 0;
+    }
+    vTaskDelay(pdMS_TO_TICKS(10));
+
+    // read and return raw value (two bytes in the buffer)
     uint8_t buffer[3];
-    auto rv = i2cbus->read(addr, buffer, 3);
+    auto rv = i2c->read(addr, buffer, 3);
 
     if (rv == 3) {
-        int16_t raw_val = buffer[0] << 8 | buffer[1];
+        int16_t raw_val = (buffer[0] << 8) | buffer[1];
         return raw_val;
     }
+    printf("Failed to read pressure (got %d bytes)\n", rv);
     return 0;
 }
-
-void SDP610::printHex(int16_t value) {
-    printf("Raw hex: 0x%04X\n", (uint16_t)value);
-    printf("Signed decimal: %d\n", value);
-}
-
-void SDP610::scanI2C() {
-    bool found = false;
-
-    for (uint8_t test_addr = 0x08; test_addr <= 0x77; ++test_addr) {
-        uint8_t dummy;
-        auto result = i2cbus->read(test_addr, &dummy, 1);
-        if (result == 1) {
-            printf("Found device at address: 0x%02X\n", test_addr);
-            found = true;
-        }
-    }
-
-    if (!found) {
-        printf("No I2C devices found\n");
-    }
+// returing scaled value
+double SDP610::read() {
+    int16_t raw_val = read_raw();
+    // scale factor for SDP610 – 125Pa: 240 (from datasheet)
+    return raw_val/240.0f;
 }

@@ -7,7 +7,7 @@ struct Monitored_data{
     uint16_t co2_val;
     double temperature;
     double humidity;
-    uint16_t pressure;
+    double pressure;
 };
 
 //define the two types of messages to be sent to different queues

@@ -16,11 +16,14 @@ void Control::task_impl() {
     // protocol initialization
     auto uart = std::make_shared<PicoOsUart>(UART_NR, UART_TX_PIN, UART_RX_PIN, BAUD_RATE, STOP_BITS);
     auto rtu_client = std::make_shared<ModbusClient>(uart);
+    auto i2cbus1 = std::make_shared<PicoI2C>(1, 100000);
+
 
     // sensor objects
     //CO2Sensor co2(rtu_client, 240, false);
     GMP252 co2(rtu_client, 240);
     HMP60 tem_hum_sensor(rtu_client,241);
+    SDP610 pressure_sensor(i2cbus1);
 
     //actuators: valve and fan
     Valve valve(27);
@@ -53,6 +56,8 @@ void Control::task_impl() {
             //vTaskDelay(pdMS_TO_TICKS(100));
             data.humidity = tem_hum_sensor.read_hum();
             printf("humidity: %.1f\n", data.humidity);
+            data.pressure = pressure_sensor.read();
+            printf("pressure: %.1f\n", data.pressure);
             //vTaskDelay(pdMS_TO_TICKS(100));
             message.type = msg;
             message.data = data;
