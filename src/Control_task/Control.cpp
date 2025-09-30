@@ -17,6 +17,7 @@ void Control::task_impl() {
     auto uart = std::make_shared<PicoOsUart>(UART_NR, UART_TX_PIN, UART_RX_PIN, BAUD_RATE, STOP_BITS);
     auto rtu_client = std::make_shared<ModbusClient>(uart);
     auto i2cbus1 = std::make_shared<PicoI2C>(1, 100000);
+    auto i2cbus0 = std::make_shared<PicoI2C>(0, 100000);
 
 
     // sensor objects
@@ -28,6 +29,9 @@ void Control::task_impl() {
     //actuators: valve and fan
     Valve valve(27);
     Produal fan(rtu_client, 1);
+
+    // EEPROM memory chip
+    EEPROM eeprom(i2cbus0);
     //this is just for testing, co2_set needs to be retrieved from UI/network.
     uint co2_set = 1500;
 
@@ -50,21 +54,25 @@ void Control::task_impl() {
             //getting monitored data from the sensors (GMP252- CO2, HMP60 -RH & TEM) -without Error checking
             data.co2_val = co2.read_value();
             printf("co2_val: %u\n", data.co2_val);
+            eeprom.writeLog("co2 measured");
             //vTaskDelay(pdMS_TO_TICKS(100));
             data.temperature = tem_hum_sensor.read_tem();
             printf("temperature: %.1f\n", data.temperature);
+            eeprom.writeLog("temp measured");
             //vTaskDelay(pdMS_TO_TICKS(100));
             data.humidity = tem_hum_sensor.read_hum();
             printf("humidity: %.1f\n", data.humidity);
+            eeprom.writeLog("humidity measured");
             data.pressure = pressure_sensor.read();
             printf("pressure: %.1f\n", data.pressure);
+            eeprom.writeLog("pressure measured");
             //vTaskDelay(pdMS_TO_TICKS(100));
             message.type = msg;
             message.data = data;
             xQueueSendToBack(to_UI, &message, portMAX_DELAY);
-            printf("QUEUE from co2 to UI\n");
+            //printf("QUEUE from co2 to UI\n");
             xQueueSendToBack(to_Network, &message, portMAX_DELAY);
-            printf("QUEUE from co2 to network\n");
+            //printf("QUEUE from co2 to network\n");
 
             //main co2 level control logic
             if (data.co2_val >= max_co2) {
@@ -101,6 +109,7 @@ void Control::task_impl() {
             }
         }
 
+        eeprom.printAllLogs();
     }
 }
 

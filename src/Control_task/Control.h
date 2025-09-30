@@ -16,6 +16,7 @@
 #include "Pressure_sensor/SDP610.h"
 #include "Valve/Valve.h"
 #include "Structs.h"
+#include "EEPROM/EEPROM.h"
 
 
 
