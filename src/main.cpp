@@ -6,7 +6,7 @@
 #include "hardware/gpio.h"
 #include "PicoOsUart.h"
 #include "ssd1306os.h"
-#include "pico/cyw43_arch.h"
+//#include "pico/cyw43_arch.h"
 #include "timers.h"
 #include "hardware/timer.h"
 #include <cstdio>
@@ -25,6 +25,13 @@ extern "C" {
         return timer_hw->timerawl;
     }
 }
+
+
+struct led_params {
+    uint8_t  pin;    // GPIO pin number
+    uint32_t delay;  // Delay in milliseconds
+};
+
 
 void display_task(void *param)
 {
