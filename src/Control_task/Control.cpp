@@ -54,11 +54,11 @@ void Control::task_impl() {
             }else{
                 //eeprom.writeLog("co2 measured");
             }
-            //vTaskDelay(pdMS_TO_TICKS(100));
+            //vTaskDelay(pdMS_TO_TICKS(10));
             data.temperature = tem_hum_sensor.read_tem();
             printf("temperature: %.1f\n", data.temperature);
             //eeprom.writeLog("temp measured");
-            //vTaskDelay(pdMS_TO_TICKS(100));
+            //vTaskDelay(pdMS_TO_TICKS(10));
             data.humidity = tem_hum_sensor.read_hum();
             printf("humidity: %.1f\n", data.humidity);
             if(data.humidity == 0){
@@ -70,7 +70,7 @@ void Control::task_impl() {
             data.pressure = pressure_sensor.read();
             printf("pressure: %.1f\n", data.pressure);
             //eeprom.writeLog("pressure measured");
-            //vTaskDelay(pdMS_TO_TICKS(100));
+            //vTaskDelay(pdMS_TO_TICKS(10));
             message.type = msg;
             message.data = data;
             xQueueSendToBack(to_UI, &message, portMAX_DELAY);
@@ -82,7 +82,7 @@ void Control::task_impl() {
             if (data.co2_val >= max_co2) {
                 //set the fan to 100% when it reaches max_co2
                 fan.setSpeed(100);
-                vTaskDelay(pdMS_TO_TICKS(100));
+                vTaskDelay(pdMS_TO_TICKS(10));
                 if(!check_fan(fan)){
                     //fan is not working
                     printf("fan failed\n");
@@ -99,12 +99,13 @@ void Control::task_impl() {
                     vTaskDelay(pdMS_TO_TICKS(500));
                     valve.close();
                     valve_open = true;
+                    last_valve_time = xTaskGetTickCount();
                 } else {
                     TickType_t current_time = xTaskGetTickCount();
                     // at least a minute interval between valve opening again to let co2 spread
                     if (current_time - last_valve_time > pdMS_TO_TICKS(60000)) {
                         valve_open = false;
-                        last_valve_time = current_time;
+                        //last_valve_time = current_time;
                     }
                 }
             }
@@ -131,7 +132,7 @@ bool Control::check_fan(Produal &fan){
     printf("fan.returnPulse(): %d\n", first);
     if(first == 0 && fan.getSpeed() > 0){
         //give time for the second read
-        vTaskDelay(pdMS_TO_TICKS(100));
+        vTaskDelay(pdMS_TO_TICKS(10));
         if(fan.returnPulse() == 0){
             return false; //fan is not working
         }
