@@ -38,6 +38,8 @@ add_executable(${ProjectName}
         ipstack/tls_common.c
         screen_selection.h
         screen_selection.cpp
+        global_definition.h
+        global_definiton.cpp
         Fan.cpp
         Fan.h
         
