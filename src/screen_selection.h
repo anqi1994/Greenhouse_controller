@@ -3,7 +3,7 @@
 #define SCREEN_SELECTION_H
 
 #include <memory>
-#include "global_definition.h"
+#include "SystemContext.h"
 #include "ssd1306os.h"
 
 #define START_ASCII 32
@@ -29,5 +29,6 @@ private:
     int color0, color1, color2;
     string text;
 };
+
 
 #endif
