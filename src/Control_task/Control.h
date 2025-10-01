@@ -30,6 +30,7 @@ private:
     // Private functions
     void task_impl();
     bool check_fan(Produal &fan);
+    bool check_sensor_val(double val);
 
     SemaphoreHandle_t timer_semphr;
     TaskHandle_t control_task;

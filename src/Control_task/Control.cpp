@@ -34,6 +34,8 @@ void Control::task_impl() {
     EEPROM eeprom(i2cbus0);
     //this is just for testing, co2_set needs to be retrieved from UI/network.
     uint co2_set = 1500;
+    TickType_t last_valve_time = xTaskGetTickCount();
+    bool valve_open = false;
 
     while(true) {
         //monitored data and message type are saved in structs.h
@@ -54,18 +56,18 @@ void Control::task_impl() {
             //getting monitored data from the sensors (GMP252- CO2, HMP60 -RH & TEM) -without Error checking
             data.co2_val = co2.read_value();
             printf("co2_val: %u\n", data.co2_val);
-            eeprom.writeLog("co2 measured");
+            //eeprom.writeLog("co2 measured");
             //vTaskDelay(pdMS_TO_TICKS(100));
             data.temperature = tem_hum_sensor.read_tem();
             printf("temperature: %.1f\n", data.temperature);
-            eeprom.writeLog("temp measured");
+            //eeprom.writeLog("temp measured");
             //vTaskDelay(pdMS_TO_TICKS(100));
             data.humidity = tem_hum_sensor.read_hum();
             printf("humidity: %.1f\n", data.humidity);
-            eeprom.writeLog("humidity measured");
+            //eeprom.writeLog("humidity measured");
             data.pressure = pressure_sensor.read();
             printf("pressure: %.1f\n", data.pressure);
-            eeprom.writeLog("pressure measured");
+            //eeprom.writeLog("pressure measured");
             //vTaskDelay(pdMS_TO_TICKS(100));
             message.type = msg;
             message.data = data;
@@ -76,8 +78,8 @@ void Control::task_impl() {
 
             //main co2 level control logic
             if (data.co2_val >= max_co2) {
-                //set the fan to 50% when it reaches max_co2
-                fan.setSpeed(50);
+                //set the fan to 100% when it reaches max_co2
+                fan.setSpeed(100);
                 vTaskDelay(pdMS_TO_TICKS(100));
                 if(!check_fan(fan)){
                     //fan is not working
@@ -87,14 +89,22 @@ void Control::task_impl() {
             } else{
                 fan.setSpeed(0);
             }
-
+            // a minute at least between openings
             if(data.co2_val <= co2_set) {
-                //need to add more in this section to test if valve works.
-                valve.open();
-                vTaskDelay(pdMS_TO_TICKS(1000));
-                valve.close();
-            } else {
-                valve.close();
+                if (!valve_open) {
+                    valve.open();
+                    printf("valve open\n");
+                    vTaskDelay(pdMS_TO_TICKS(500));
+                    valve.close();
+                    valve_open = true;
+                } else {
+                    TickType_t current_time = xTaskGetTickCount();
+                    // at least a minute interval between valve opening again to let co2 spread
+                    if (current_time - last_valve_time > pdMS_TO_TICKS(60000)) {
+                        valve_open = false;
+                        last_valve_time = current_time;
+                    }
+                }
             }
         }
 
@@ -109,7 +119,7 @@ void Control::task_impl() {
             }
         }
 
-        eeprom.printAllLogs();
+        //eeprom.printAllLogs();
     }
 }
 
@@ -125,4 +135,11 @@ bool Control::check_fan(Produal &fan){
         }
     }
     return true; //fan is working
+}
+
+bool Control::check_sensor_val(double val) {
+    if (val == 0) {
+        return false;
+    }
+    return true;
 }
