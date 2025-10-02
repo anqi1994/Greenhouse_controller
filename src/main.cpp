@@ -294,31 +294,31 @@ void co2_task(void *param) {
 
 #endif
 
-TimerHandle_t measure_timer;
+//TimerHandle_t measure_timer;
 SemaphoreHandle_t measure_semaphore;
 QueueHandle_t to_control;
 QueueHandle_t to_UI;
 QueueHandle_t to_network;
 
-void timer_callback(TimerHandle_t xTimer) {
+/*void timer_callback(TimerHandle_t xTimer) {
     xSemaphoreGive(measure_semaphore);
-}
+}*/
 
 int main() {
     stdio_init_all();
 
-    measure_timer = xTimerCreate("measure_timer", pdMS_TO_TICKS(2000), pdTRUE, nullptr, timer_callback);
-    measure_semaphore = xSemaphoreCreateBinary();
+    //measure_timer = xTimerCreate("measure_timer", pdMS_TO_TICKS(2000), pdTRUE, nullptr, timer_callback);
+    //measure_semaphore = xSemaphoreCreateBinary();
     to_control = xQueueCreate(10, sizeof(uint));
     to_UI = xQueueCreate(10, sizeof(Message));
     to_network = xQueueCreate(10, sizeof(Message));
 
 
 
-    xTimerStart(measure_timer, 0);
+    //xTimerStart(measure_timer, 0);
 
-    Control control_task(measure_semaphore, to_UI,to_network,to_control);
-    QueueTest test(to_control,to_network,to_UI);
+    //Control control_task(measure_semaphore, to_UI,to_network,to_control);
+    //QueueTest test(to_control,to_network,to_UI);
     QueueTestTwo testTwo(to_control,to_UI,to_network);
 
     vTaskStartScheduler();

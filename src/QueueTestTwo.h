@@ -3,21 +3,33 @@
 #include "FreeRTOS.h"
 #include "queue.h"
 #include "task.h"
+#include "ipstack/IPStack.h"
+#include "Structs.h"
 
 
 class QueueTestTwo {
 public:
     QueueTestTwo(QueueHandle_t to_CO2, QueueHandle_t to_UI, QueueHandle_t to_Network, uint32_t stack_size = 512, UBaseType_t priority = tskIDLE_PRIORITY + 1);
     static void task_wrap(void *pvParameters);
+    char* extract_thingspeak_http_body();
+
 private:
     void task_impl();
+    int connect_to_http(IPStack &ip_stack);
+    int disconnect_to_http(IPStack &ip_stack);
+    bool upload_sensor_data(IPStack &ip_stack, Monitored_data &data);
+    bool upload_co2_set_level(IPStack &ip_stack, uint co2_set);
+    uint read_co2_set_level(IPStack &ip_stack);
     QueueHandle_t to_CO2;
     QueueHandle_t to_UI;
     QueueHandle_t to_Network;
     const char *name = "TESTTWO";
-
+    const char *host = "35.168.172.60"; //domain for thingspeak
+    const int port = 80; //http service
+    const char *write_api = "7RC0GM5VZK7VRPN7";
+    const char *read_api = "9L9GPCBA6QG1ZC14";
+    static const int BUFSIZE = 2048;
+    char buffer[BUFSIZE];
 };
-
-
 
 #endif //QUEUETEST_H
