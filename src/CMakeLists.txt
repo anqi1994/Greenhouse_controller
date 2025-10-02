@@ -47,6 +47,7 @@ add_executable(${ProjectName}
         Fan.h
         global_definition.h
         global_definition.cpp
+        Structs.h
 
 
 )
