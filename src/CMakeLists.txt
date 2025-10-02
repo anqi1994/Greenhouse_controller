@@ -48,6 +48,8 @@ add_executable(${ProjectName}
         global_definition.h
         global_definition.cpp
         Structs.h
+        InterTaskTransport.cpp
+        InterTaskTransport.h
 
 
 )
