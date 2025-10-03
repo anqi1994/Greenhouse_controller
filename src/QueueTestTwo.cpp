@@ -81,11 +81,11 @@ void QueueTestTwo::task_impl() {
             //printf("QUEUE to network from UI: co2_set: %d\n", co2_set);
         }
 
-        if(!tested){
+        if(tested){
             //queue to UI, it needs to send type, co2 set level.
             send.type = CO2_SET_DATA;
             send.co2_set = co2_set;
-            //xQueueSendToBack(to_UI, &co2_set, portMAX_DELAY);
+            xQueueSendToBack(to_UI, &co2_set, portMAX_DELAY);
             //printf("QUEUE from network from UI: co2_set: %d\n", co2_set);
             //queue to co2, it only needs to send uint co2 set value.
             xQueueSendToBack(to_CO2, &co2_set, portMAX_DELAY);
