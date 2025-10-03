@@ -20,6 +20,8 @@
 #include "ModbusClient.h"
 #include "ModbusRegister.h"
 
+#include "InterTaskTransport.h"
+
 extern "C" {
     uint32_t read_runtime_ctr(void) {
         return timer_hw->timerawl;
@@ -35,6 +37,19 @@ struct led_params {
 
 void display_task(void *param)
 {
+    auto* itt = static_cast<InterTaskTransport*>(param);
+    configASSERT(itt != nullptr);
+
+    int co2_i = 0;
+    int temp_i = 0;
+    int rh_i = 0;
+    int sp_i = 0;
+
+    TickType_t last_redraw = xTaskGetTickCount();
+    const TickType_t redraw_period = pdMS_TO_TICKS(1000);
+
+
+
     auto i2cbus{std::make_shared<PicoI2C>(1, 400000)};
     auto display = std::make_shared<ssd1306os>(i2cbus);
     currentScreen screen(display);
@@ -47,6 +62,16 @@ void display_task(void *param)
     screen.screenSelection();
 
     while(true) {
+        Message rx{};
+        while (itt->uiReceive(rx, 0)) {
+            if (rx.type == MONITORED_DATA) {
+                co2_i  = static_cast<int>(rx.data.co2_val);
+                temp_i = static_cast<int>(rx.data.temperature + (rx.data.temperature >= 0 ? 0.5 : -0.5));
+                rh_i   = static_cast<int>(rx.data.humidity   + (rx.data.humidity    >= 0 ? 0.5 : -0.5));
+            } else if (rx.type == CO2_SET_DATA) {
+                sp_i = static_cast<int>(rx.co2_set);
+            }
+        }
         if (xQueueReceive(gpio_data_q, &temp_data, pdMS_TO_TICKS(20))){
             if (temp_data.action_type == BACK_PRESS){
                 screen.screenSelection();
@@ -77,6 +102,11 @@ void display_task(void *param)
                 screen.info(co2, temp, rh, speed, setpoint);
             }
         }
+        if (rot_btn_data.screen_type == INFO_SCR &&
+            (xTaskGetTickCount() - last_redraw) >= redraw_period) {
+            screen.info(co2_i, temp_i, rh_i, speed, (sp_i ? sp_i : setpoint));
+            last_redraw = xTaskGetTickCount();
+    }
     }
 }
 
@@ -309,6 +339,10 @@ void gpio_task(void *param) {
 
 //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 void modbus_task(void *param) {
+
+    auto* itt = static_cast<InterTaskTransport*>(param);
+    configASSERT(itt != nullptr);
+
     auto uart{std::make_shared<PicoOsUart>(UART_NR, UART_TX_PIN, UART_RX_PIN, BAUD_RATE, STOP_BITS)};
     auto rtu_client{std::make_shared<ModbusClient>(uart)};
     ModbusRegister mb_co2(rtu_client, 240, 256);
@@ -323,6 +357,16 @@ void modbus_task(void *param) {
         vTaskDelay(pdMS_TO_TICKS(5));
         temp = mb_temp.read()/10;
         vTaskDelay(pdMS_TO_TICKS(5));
+        xEventGroupSetBits(co2EventGroup, CO2_CHANGE_BIT_LCD);
+        vTaskDelay(pdMS_TO_TICKS(100));
+
+        (void)itt->controlPublishMonitoredData(
+            static_cast<uint16_t>(co2),   // ppm
+            static_cast<double>(temp),    // degC
+            static_cast<double>(rh),      // %RH
+            1013.0,                       // pressure
+            20);                          // timeout_ms
+
         xEventGroupSetBits(co2EventGroup, CO2_CHANGE_BIT_LCD);
         vTaskDelay(pdMS_TO_TICKS(100));
 
@@ -405,11 +449,82 @@ void blink_task(void *param)
     }
 }
 
+// ===== Minimal CO2 injector over USB-CDC (stdio) =====
+
+static bool parse_co2_line(const std::string& s, uint16_t& out_ppm)
+{
+    // Accept "co2 700" or "700"
+    // Trim spaces
+    size_t i = 0, j = s.size();
+    while (i < j && std::isspace(static_cast<unsigned char>(s[i]))) ++i;
+    while (j > i && std::isspace(static_cast<unsigned char>(s[j-1]))) --j;
+    if (i >= j) return false;
+
+    // If starts with "co2"/"CO2", skip it and following spaces
+    if ((j - i) >= 3) {
+        std::string k = s.substr(i, 3);
+        for (auto& c : k) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+        if (k == "co2") {
+            i += 3;
+            while (i < j && std::isspace(static_cast<unsigned char>(s[i]))) ++i;
+        }
+    }
+
+    // Now parse a positive integer
+    char* endp = nullptr;
+    long v = std::strtol(s.c_str() + i, &endp, 10);
+    if (endp == s.c_str() + i || v < 0 || v > 65535) return false;
+    out_ppm = static_cast<uint16_t>(v);
+    return true;
+}
+
+extern "C" void serial_co2_inject_task(void* param)
+{
+    auto* itt = static_cast<InterTaskTransport*>(param);
+    configASSERT(itt != nullptr);
+
+    // USB-CDC must be initialized by stdio_init_all() in main
+    std::string line;
+    puts("CO2 inject ready. Type a number or 'co2 <ppm>' and press Enter.\r\nExample: 700\r\n");
+
+    for (;;)
+    {
+        // Non-blocking getchar: returns PICO_ERROR_TIMEOUT when no char
+        int ch = getchar_timeout_us(0);
+        if (ch >= 0 && ch != PICO_ERROR_TIMEOUT) {
+            if (ch == '\r' || ch == '\n') {
+                if (!line.empty()) {
+                    uint16_t co2_ppm = 0;
+                    if (parse_co2_line(line, co2_ppm)) {
+                        bool ok = itt->controlPublishMonitoredData(co2_ppm,
+                                                                   /*t=*/0.0, /*rh=*/0.0, /*p=*/0.0,
+                                                                   /*timeout_ms=*/20);
+                        printf(ok ? "OK co2=%u\r\n" : "ERR queue_full co2=%u\r\n", (unsigned)co2_ppm);
+                    } else {
+                        puts("ERR parse. Use: 700  or  co2 700\r\n");
+                    }
+                    line.clear();
+                }
+            } else {
+                // Accumulate character (basic guard)
+                if (line.size() < 64) line.push_back(static_cast<char>(ch));
+            }
+        }
+        vTaskDelay(pdMS_TO_TICKS(10)); // yield
+    }
+}
+
+
 // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 int main() {
     static led_params lp1 = { .pin = 20, .delay = 5000 };
     stdio_init_all();
     printf("\nBoot\n");
+    auto* itt = new InterTaskTransport();
+    bool ok = itt->init(/*to_control=*/8,
+                        /*to_UI=*/8,
+                        /*to_network=*/8);
+    configASSERT(ok);
 
     // Create queues and synchronization objects BEFORE tasks
     setpoint_q = xQueueCreate(QUEUE_SIZE, sizeof(setpoint));
@@ -428,9 +543,13 @@ int main() {
 
     // Create tasks with proper priority and stack size
     xTaskCreate(gpio_task, "gpio task", 512, nullptr, tskIDLE_PRIORITY + 2, nullptr);  // Higher priority
-    xTaskCreate(display_task, "SSD1306", 1024, nullptr, tskIDLE_PRIORITY + 1, nullptr);  // Larger stack
-    xTaskCreate(modbus_task, "Modbus", 512, nullptr, tskIDLE_PRIORITY + 1, nullptr);
+    xTaskCreate(display_task, "SSD1306", 1024, itt, tskIDLE_PRIORITY + 1, nullptr);
+    xTaskCreate(modbus_task,  "Modbus",   512,  itt, tskIDLE_PRIORITY + 1, nullptr);
     // xTaskCreate(blink_task, "LED_1", 256, (void *) &lp1, tskIDLE_PRIORITY + 1, nullptr);
+
+    // after you create 'itt' and call itt->init(...)
+    xTaskCreate(serial_co2_inject_task, "Co2Inject", 1024, itt, tskIDLE_PRIORITY + 2, nullptr);
+
 
     printf("Starting FreeRTOS scheduler...\n");
     vTaskStartScheduler();
