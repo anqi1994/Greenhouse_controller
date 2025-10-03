@@ -67,8 +67,11 @@ void Control::task_impl() {
             }else{
                 //eeprom.writeLog("humidity measured");
             }
-            data.pressure = pressure_sensor.read();
-            printf("pressure: %.1f\n", data.pressure);
+
+            data.fan_speed = fan.getSpeed();
+            printf("fan_speed: %u\n", data.fan_speed);
+
+            //printf("pressure: %.1f\n", pressure_sensor.read());
             //eeprom.writeLog("pressure measured");
             //vTaskDelay(pdMS_TO_TICKS(10));
             message.type = msg;

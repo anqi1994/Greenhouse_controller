@@ -15,7 +15,7 @@ void Produal::setSpeed(int speed){
 }
 
 //return the speed of the fan saved in the system
-int Produal::getSpeed() const{
+uint16_t Produal::getSpeed() const{
     return current_speed_in_percent;
 }
 

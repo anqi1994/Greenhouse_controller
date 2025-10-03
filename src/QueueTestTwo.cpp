@@ -34,7 +34,6 @@ void QueueTestTwo::task_impl() {
     monitored_data.co2_val = 1300;
     monitored_data.temperature = 25;
     monitored_data.humidity = 55;
-    monitored_data.pressure = 17;
 
     received.data = monitored_data;
     received.type = MONITORED_DATA;
@@ -57,7 +56,7 @@ void QueueTestTwo::task_impl() {
                 monitored_data.co2_val = received.data.co2_val;
                 monitored_data.temperature = received.data.temperature;
                 monitored_data.humidity = received.data.humidity;
-                monitored_data.pressure = received.data.pressure;
+                monitored_data.fan_speed = received.data.fan_speed;
             }
             printf("trying to connect to http");
             if(connect_to_http(ip_stack)== 0){
@@ -142,14 +141,14 @@ bool QueueTestTwo::upload_sensor_data(IPStack &ip_stack, Monitored_data &data){
     // Update fields using a minimal GET request - tested to work
     //uploading monitored data to the cloud
     snprintf(req,sizeof(req),
-            "GET /update?api_key=%s&field1=%u&field2=%.2f&field3=%.2f&field4=%.2f HTTP/1.1\r\n"
+            "GET /update?api_key=%s&field1=%u&field2=%.2f&field3=%.2f&field4=%u HTTP/1.1\r\n"
             "Host: %s\r\n"
             "\r\n",
             write_api,
             data.co2_val,
             data.temperature,
             data.humidity,
-            data.pressure,
+            data.fan_speed,
             host);
 
     ip_stack.write((unsigned char *)(req),strlen(req),1000);

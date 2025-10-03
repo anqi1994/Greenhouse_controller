@@ -9,7 +9,7 @@ public:
 
     void setSpeed(int value);
     uint16_t returnPulse();
-    int getSpeed() const;
+    uint16_t getSpeed() const;
 
 private:
     ModbusRegister produal_speed;
