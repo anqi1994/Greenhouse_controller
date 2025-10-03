@@ -71,9 +71,8 @@ void display_task(void *param){
                     // confirm new setpoint
                     ctx.setpoint = ctx.setpoint_temp;
                     xEventGroupSetBits(ctx.co2EventGroup, SystemContext::CO2_CHANGE_BIT_EEPROM);
-                    // return to info screen or selection? we'll keep user in info screen
-                    ctx.rot_btn_data.screen_type = ScreenType::INFO_SCR;
-                    screen.info(ctx.co2, ctx.temp, ctx.rh, ctx.speed, ctx.setpoint);
+                    // stay in SET_CO2 screen instead of going to INFO
+                    screen.setCo2(ctx.setpoint_temp);
                 } else if (ctx.rot_btn_data.screen_type == ScreenType::WIFI_CONF_SCR){
                     // Wi-Fi editing handled by gpio_task state machine; display simply refreshes
                     screen.wifiConfig(ctx.SSID_WIFI, ctx.PASS_WIFI);
