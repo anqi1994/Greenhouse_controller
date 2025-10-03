@@ -29,13 +29,13 @@ void QueueTest::task_impl() {
         if (xQueueReceive(to_UI, &received, portMAX_DELAY)) {
             //the received data is from CO2_control_task
             if(received.type == MONITORED_DATA){
-                printf("QUEUE to UI from CO2_control_task: co2: %d\n", received.data.co2_val);
-                printf("QUEUE to UI from CO2_control_task: temp: %.1f\n", received.data.temperature);
+                //printf("QUEUE to UI from CO2_control_task: co2: %d\n", received.data.co2_val);
+                //printf("QUEUE to UI from CO2_control_task: temp: %.1f\n", received.data.temperature);
             }
             //the received data is from network task
             else if(received.type == CO2_SET_DATA){
                 co2_set = received.co2_set;
-                printf("QUEUE to UI from network: co2_set: %d\n", co2_set);
+                //printf("QUEUE to UI from network: co2_set: %d\n", co2_set);
             }
 
         }

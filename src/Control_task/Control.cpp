@@ -48,7 +48,7 @@ void Control::task_impl() {
         if (xSemaphoreTake(timer_semphr, portMAX_DELAY) == pdTRUE) {
             //getting monitored data from the sensors (GMP252- CO2, HMP60 -RH & TEM) -without Error checking
             data.co2_val = co2.read_value();
-            printf("co2_val: %u\n", data.co2_val);
+            //printf("co2_val: %u\n", data.co2_val);
             if(data.co2_val == 0){
                 //eeprom.writeLog("co2 measure failed this round");
             }else{
@@ -56,11 +56,11 @@ void Control::task_impl() {
             }
             //vTaskDelay(pdMS_TO_TICKS(10));
             data.temperature = tem_hum_sensor.read_tem();
-            printf("temperature: %.1f\n", data.temperature);
+            //printf("temperature: %.1f\n", data.temperature);
             //eeprom.writeLog("temp measured");
             //vTaskDelay(pdMS_TO_TICKS(10));
             data.humidity = tem_hum_sensor.read_hum();
-            printf("humidity: %.1f\n", data.humidity);
+            //printf("humidity: %.1f\n", data.humidity);
             if(data.humidity == 0){
                 //humidity and temperature use the same sensor
                 //eeprom.writeLog("T&RH measure failed this round");
@@ -68,7 +68,7 @@ void Control::task_impl() {
                 //eeprom.writeLog("humidity measured");
             }
             data.pressure = pressure_sensor.read();
-            printf("pressure: %.1f\n", data.pressure);
+            //printf("pressure: %.1f\n", data.pressure);
             //eeprom.writeLog("pressure measured");
             //vTaskDelay(pdMS_TO_TICKS(10));
             message.type = msg;

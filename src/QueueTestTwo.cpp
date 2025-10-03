@@ -3,10 +3,14 @@
 #include <cstdio>
 #include <cstring>
 
+// tried to connect with loading credentials to statics. Didn't work. Only string literals/#define works
+static char wifi_ssid[32];
+static char wifi_password[64];
 
 QueueTestTwo::QueueTestTwo(QueueHandle_t to_CO2,  QueueHandle_t to_UI, QueueHandle_t to_Network,uint32_t stack_size, UBaseType_t priority):
     to_CO2(to_CO2),to_UI (to_UI),to_Network(to_Network){
 
+    load_wifi_cred();
     xTaskCreate(task_wrap, name, stack_size, this, priority, nullptr);
 }
 
@@ -16,45 +20,18 @@ void QueueTestTwo::task_wrap(void *pvParameters) {
 }
 
 void QueueTestTwo::task_impl() {
+    //load_wifi_cred();
+
     Message received{};
     Message send{};
 
     //test data for thingspeak!!!
     uint co2_set = 1400;
     bool tested_upload = false;
-
-    //Main logic to receive data from the queue, DO NOT DELETE! WE NEED IT.
-    /*while (true) {
-        //get data from CO2_control and UI. data type received: 1. monitored data. 2. uint CO2 set level.
-        if (xQueueReceive(to_Network, &received, portMAX_DELAY)) {
-            //the received data is from CO2_control_task
-            if(received.type == MONITORED_DATA){
-                printf("QUEUE to Network from CO2_control_task: co2: %d\n", received.data.co2_val);
-                printf("QUEUE to Network from CO2_control_task: temp: %.1f\n", received.data.temperature);
-            }
-        }
-        //the received data is from network task
-        else if(received.type == CO2_SET_DATA){
-            co2_set = received.co2_set;
-            printf("QUEUE to network from UI: co2_set: %d\n", co2_set);
-        }
-
-        if(!tested){
-            //queue to UI, it needs to send type, co2 set level.
-            send.type = CO2_SET_DATA;
-            send.co2_set = co2_set;
-            xQueueSendToBack(to_UI, &co2_set, portMAX_DELAY);
-            printf("QUEUE from network from UI: co2_set: %d\n", co2_set);
-            //queue to co2, it only needs to send uint co2 set value.
-            xQueueSendToBack(to_CO2, &co2_set, portMAX_DELAY);
-            printf("QUEUE from network to co2: co2_set: %d\n", co2_set);
-            tested = true;
-        }
-    }*/
-
+    bool tested = true;
     //this is a test, build the monitored data test numbers
     Monitored_data monitored_data{};
-    monitored_data.co2_val = 1800;
+    monitored_data.co2_val = 1300;
     monitored_data.temperature = 25;
     monitored_data.humidity = 55;
     monitored_data.pressure = 17;
@@ -63,12 +40,25 @@ void QueueTestTwo::task_impl() {
     received.type = MONITORED_DATA;
 
     printf("tries to connect");
-    printf("SSID: %s, PASSWORD: %s\n", WIFI_SSID, WIFI_PASSWORD);
-    IPStack ip_stack(WIFI_SSID, WIFI_PASSWORD);
 
-    while(true){
-        //test only once
-        if(!tested_upload){
+    //printf("SSID: %s, PASSWORD: %s\n", SSID, PASSWORD);
+    IPStack ip_stack(wifi_ssid, wifi_password);
+    vTaskDelay(10000);
+
+    //Main logic to receive data from the queue, DO NOT DELETE! WE NEED IT.
+    while (true) {
+
+        //get data from CO2_control and UI. data type received: 1. monitored data. 2. uint CO2 set level.
+        if (xQueueReceive(to_Network, &received, portMAX_DELAY)) {
+            //the received data is from CO2_control_task
+            if(received.type == MONITORED_DATA){
+                printf("QUEUE to Network from CO2_control_task: co2: %d\n", received.data.co2_val);
+                printf("thingspeak: temp: %.1f\n", received.data.temperature);
+                monitored_data.co2_val = received.data.co2_val;
+                monitored_data.temperature = received.data.temperature;
+                monitored_data.humidity = received.data.humidity;
+                monitored_data.pressure = received.data.pressure;
+            }
             printf("trying to connect to http");
             if(connect_to_http(ip_stack)== 0){
                 printf("goes here\n");
@@ -83,8 +73,31 @@ void QueueTestTwo::task_impl() {
             }else{
                 printf("Connection failed\n");
             }
-            tested_upload = true;
+
         }
+        //the received data is from UI task
+        else if(received.type == CO2_SET_DATA){
+            co2_set = received.co2_set;
+            //printf("QUEUE to network from UI: co2_set: %d\n", co2_set);
+        }
+
+        if(!tested){
+            //queue to UI, it needs to send type, co2 set level.
+            send.type = CO2_SET_DATA;
+            send.co2_set = co2_set;
+            //xQueueSendToBack(to_UI, &co2_set, portMAX_DELAY);
+            //printf("QUEUE from network from UI: co2_set: %d\n", co2_set);
+            //queue to co2, it only needs to send uint co2 set value.
+            xQueueSendToBack(to_CO2, &co2_set, portMAX_DELAY);
+            printf("QUEUE from network to co2: co2_set: %d\n", co2_set);
+            tested = true;
+        }
+
+        //test only once
+        //if(!tested_upload){
+
+            //tested_upload = true;
+        //}
 
         //check every 15 from talkback queue
         if (connect_to_http(ip_stack) == 0) {
@@ -93,10 +106,27 @@ void QueueTestTwo::task_impl() {
                 upload_co2_set_level(ip_stack,co2_set);
             };
             disconnect_to_http(ip_stack);
+            vTaskDelay(pdMS_TO_TICKS(15000));
         }
-        vTaskDelay(pdMS_TO_TICKS(15000));
+
     }
+
+    }
+
+
+
+void QueueTestTwo::load_wifi_cred() {
+    // Set defaults
+    strncpy(wifi_ssid, "Julijaiph", sizeof(wifi_ssid));
+    strncpy(wifi_password, "12341234", sizeof(wifi_password));
+
+    // Read from EEPROM
+    // eeprom_read(...);
+
+    wifi_ssid[sizeof(wifi_ssid) - 1] = '\0';
+    wifi_password[sizeof(wifi_password) - 1] = '\0';
 }
+
 
 //connect to thingspeak service via http
 int QueueTestTwo::connect_to_http(IPStack &ip_stack){

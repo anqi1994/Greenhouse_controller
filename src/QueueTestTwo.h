@@ -6,15 +6,18 @@
 #include "ipstack/IPStack.h"
 #include "Structs.h"
 
+#define SSID "Julijaiph"
+#define PASSWORD "12341234"
 
 class QueueTestTwo {
 public:
-    QueueTestTwo(QueueHandle_t to_CO2, QueueHandle_t to_UI, QueueHandle_t to_Network, uint32_t stack_size = 512, UBaseType_t priority = tskIDLE_PRIORITY + 1);
+    QueueTestTwo(QueueHandle_t to_CO2, QueueHandle_t to_UI, QueueHandle_t to_Network, uint32_t stack_size = 2048, UBaseType_t priority = tskIDLE_PRIORITY + 2);
     static void task_wrap(void *pvParameters);
     char* extract_thingspeak_http_body();
 
 private:
     void task_impl();
+    void load_wifi_cred();
     int connect_to_http(IPStack &ip_stack);
     int disconnect_to_http(IPStack &ip_stack);
     bool upload_sensor_data(IPStack &ip_stack, Monitored_data &data);
@@ -30,6 +33,9 @@ private:
     const char *read_api = "9L9GPCBA6QG1ZC14";
     static const int BUFSIZE = 2048;
     char buffer[BUFSIZE];
+    const char *wifissid = "Julijaiph";
+    const char *wifipass = "12341234";
+
 };
 
 #endif //QUEUETEST_H
