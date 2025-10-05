@@ -277,14 +277,14 @@ void UI::display_screen() {
             //todo: get network from EEPROM and show variable not hardcode
             display->text("Julijaiph", (oled_width-105), line_height*2);
 
-        for (uint i = 0; i < 2; i++) {
-            char buffer[32];
-            snprintf(buffer, sizeof(buffer), "%c %s",
-                (i == current_menu_item) ? '>' : ' ',
-                network_menu[i]);
-            display->text(buffer, 0, line_height * (5 + i));
-        }
-        break;
+            for (uint i = 0; i < 2; i++) {
+                char buffer[32];
+                snprintf(buffer, sizeof(buffer), "%c %s",
+                    (i == current_menu_item) ? '>' : ' ',
+                    network_menu[i]);
+                display->text(buffer, 0, line_height * (5 + i));
+            }
+            break;
     }
 
     display->show();

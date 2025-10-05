@@ -1,7 +1,5 @@
 #include <iostream>
-#include <QueueTest.h>
 #include <sstream>
-#include <Task_Control/Control.h>
 #include <pico/stdio.h>
 
 #include "FreeRTOS.h"
@@ -10,11 +8,13 @@
 #include "timers.h"
 #include "hardware/gpio.h"
 #include "PicoOsUart.h"
-#include "Task_Network/Network.h"
 #include "ssd1306.h"
 #include "modbus/ModbusClient.h"
 #include "Structs.h"
 
+#include "Task_Network/Network.h"
+#include "Task_Control/Control.h"
+#include "Task_UI/UI.h"
 
 #include "hardware/timer.h"
 extern "C" {
@@ -316,8 +316,8 @@ int main() {
     xTimerStart(measure_timer, 0);
 
     Control control_task(measure_semaphore, to_UI,to_network,to_control);
-    QueueTest test(to_control,to_network,to_UI);
-    Network testTwo(to_control,to_UI,to_network);
+    UI ui_task(to_control,to_network,to_UI);
+    Network network_task(to_control,to_UI,to_network);
 
     vTaskStartScheduler();
 

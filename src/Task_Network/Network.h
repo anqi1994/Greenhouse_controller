@@ -6,8 +6,6 @@
 #include "../ipstack/IPStack.h"
 #include "../Structs.h"
 
-#define SSID "Julijaiph"
-#define PASSWORD "12341234"
 
 class Network {
 public:

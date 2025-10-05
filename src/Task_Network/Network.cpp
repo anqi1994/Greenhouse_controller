@@ -40,7 +40,7 @@ void Network::task_impl() {
 
     printf("tries to connect");
 
-    printf("SSID: %s, PASSWORD: %s\n", SSID, PASSWORD);
+    //printf("SSID: %s, PASSWORD: %s\n", SSID, PASSWORD);
     IPStack ip_stack;
 
     bool cloud_connected = connect_to_cloud(ip_stack,wifi_ssid,wifi_password);
@@ -79,6 +79,8 @@ void Network::task_impl() {
         //the received data is from UI task
         else if(received.type == CO2_SET_DATA){
             co2_set = received.co2_set;
+            // not sure if this is ok?
+            upload_co2_set_level(ip_stack, co2_set);
             //printf("QUEUE to network from UI: co2_set: %d\n", co2_set);
         }
 
