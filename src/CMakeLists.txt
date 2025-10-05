@@ -8,10 +8,10 @@ add_executable(${ProjectName}
 
 #        ipstack/IPStack.cpp
 #        ipstack/IPStack.h
-        ipstack/lwipopts.h
-        ipstack/tls_common.c
-        ipstack/picow_tls_client.c
-        ipstack/lwipopts_tls.h
+#        ipstack/lwipopts.h
+        #ipstack/tls_common.c
+#        ipstack/picow_tls_client.c
+#        ipstack/lwipopts_tls.h
 
         i2c/PicoI2C.cpp
         i2c/PicoI2C.h
@@ -34,15 +34,20 @@ add_executable(${ProjectName}
 #        display/ssd1306.h
         display/ssd1306os.h
         display/ssd1306os.cpp
-        ipstack/tls_common.h
-        ipstack/tls_common.c
-        screen_selection.h
-        screen_selection.cpp
-        global_definition.h
-        global_definiton.cpp
+        #ipstack/tls_common.h
+        #screen_selection.h
+        #screen_selection.cpp
+        #global_definition.h
+        #global_definiton.cpp
         Fan.cpp
         Fan.h
-        
+
+        UI-Task/icons.h
+        UI-Task/UI.cpp
+        UI-Task/UI.h
+        Structs.h
+        GPIO/GPIO.cpp
+        GPIO/GPIO.h
 )
 
 target_include_directories(${ProjectName} PRIVATE
@@ -51,7 +56,7 @@ target_include_directories(${ProjectName} PRIVATE
         uart
         i2c
         display
-        ipstack
+    #    ipstack
 )
 
 target_compile_definitions(${ProjectName} PRIVATE
@@ -65,9 +70,9 @@ target_link_libraries(${ProjectName}
         pico_stdlib
         hardware_i2c
         FreeRTOS-Kernel-Heap4
-        pico_cyw43_arch_lwip_sys_freertos
-        pico_lwip_mbedtls
-        pico_mbedtls
+#        pico_cyw43_arch_lwip_sys_freertos
+#        pico_lwip_mbedtls
+#        pico_mbedtls
 
 )
 

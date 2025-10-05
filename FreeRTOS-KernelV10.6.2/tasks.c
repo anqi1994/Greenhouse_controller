@@ -3080,7 +3080,7 @@ void vTaskSwitchContext( void )
         xYieldPending = pdFALSE;
         traceTASK_SWITCHED_OUT();
 
-        #if ( configGENERATE_RUN_TIME_STATS == 1 )
+        #if ( configGENERATE_RUN_TIME_STATS == 0 )
         {
             #ifdef portALT_GET_RUN_TIME_COUNTER_VALUE
                 portALT_GET_RUN_TIME_COUNTER_VALUE( ulTotalRunTime );
