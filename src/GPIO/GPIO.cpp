@@ -30,4 +30,7 @@ void GPIO::write(bool value){
         gpio_put(pin_number,value);
     }
 }
-
+// overloaded operator to return pin number when object is specified
+GPIO::operator uint() const {
+    return pin_number;
+}

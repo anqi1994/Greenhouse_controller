@@ -11,10 +11,11 @@ public:
 
     bool read() const;
     void write(bool value);
+    operator uint() const;
 
 
 private:
-    int pin_number;
+    uint pin_number;
     bool is_input;
     bool is_pullup;
     bool is_inverted;

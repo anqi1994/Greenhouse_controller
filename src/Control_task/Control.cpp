@@ -123,7 +123,7 @@ void Control::task_impl() {
         if(xQueueReceive(to_CO2, &received_data, 0) == pdTRUE){
             if(received_data < max_co2){
                 co2_set = received_data;
-                printf("co2: %u\n", received_data);
+                printf("CONTROL co2: %u\n", received_data);
             }else
             {
                 printf("co2 set is not in acceptable range.\n");
