@@ -7,7 +7,7 @@ SDP610::SDP610(std::shared_ptr<PicoI2C> i2cbus, uint8_t address):
     i2c->write(addr, &reset_cmd, 1);
     vTaskDelay(pdMS_TO_TICKS(20));
 
-    printf("SDP610 initialized at address 0x%02X\n", addr);
+    //printf("SDP610 initialized at address 0x%02X\n", addr);
 
 }
 

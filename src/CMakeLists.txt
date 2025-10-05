@@ -38,7 +38,6 @@ add_executable(${ProjectName}
         Fan/Produal.h
         CO2_sensor/GMP252.cpp
         CO2_sensor/GMP252.h
-        Control_task/Control.cpp
         T_RH_sensor/HMP60.cpp
         T_RH_sensor/HMP60.cpp
         T_RH_sensor/HMP60.h
@@ -47,9 +46,12 @@ add_executable(${ProjectName}
         GPIO/GPIO.cpp
         Valve/Valve.cpp
         Valve/Valve.h
-        QueueTest.cpp
-        QueueTestTwo.cpp
-        QueueTestTwo.h
+        Task_Network/Network.cpp
+        Task_Network/Network.h
+        Task_UI/UI.cpp
+        Task_UI/UI.h
+        Task_Control/Control.cpp
+        Task_Control/Control.h
         EEPROM/EEPROM.cpp
         EEPROM/EEPROM.h
         Pressure_sensor/SDP610.cpp

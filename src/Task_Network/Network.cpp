@@ -1,4 +1,4 @@
-#include "QueueTestTwo.h"
+#include "Network.h"
 
 #include <cstdio>
 #include <cstring>
@@ -7,19 +7,19 @@
 static char wifi_ssid[32];
 static char wifi_password[64];
 
-QueueTestTwo::QueueTestTwo(QueueHandle_t to_CO2,  QueueHandle_t to_UI, QueueHandle_t to_Network,uint32_t stack_size, UBaseType_t priority):
+Network::Network(QueueHandle_t to_CO2,  QueueHandle_t to_UI, QueueHandle_t to_Network,uint32_t stack_size, UBaseType_t priority):
     to_CO2(to_CO2),to_UI (to_UI),to_Network(to_Network){
 
     load_wifi_cred();
     xTaskCreate(task_wrap, name, stack_size, this, priority, nullptr);
 }
 
-void QueueTestTwo::task_wrap(void *pvParameters) {
-    auto *test = static_cast<QueueTestTwo*>(pvParameters);
+void Network::task_wrap(void *pvParameters) {
+    auto *test = static_cast<Network*>(pvParameters);
     test->task_impl();
 }
 
-void QueueTestTwo::task_impl() {
+void Network::task_impl() {
     //load_wifi_cred();
 
     Message received{};
@@ -116,7 +116,7 @@ void QueueTestTwo::task_impl() {
 
 
 
-void QueueTestTwo::load_wifi_cred() {
+void Network::load_wifi_cred() {
     // Set defaults
     strncpy(wifi_ssid, "Julijaiph", sizeof(wifi_ssid));
     strncpy(wifi_password, "12341234", sizeof(wifi_password));
@@ -130,7 +130,7 @@ void QueueTestTwo::load_wifi_cred() {
 
 
 //connect to thingspeak service via http
-bool QueueTestTwo::connect_to_http(IPStack &ip_stack){
+bool Network::connect_to_http(IPStack &ip_stack){
     printf("%s,%d",host,port);
     int rc = ip_stack.connect(host, port);
     if(rc == 0){
@@ -139,7 +139,7 @@ bool QueueTestTwo::connect_to_http(IPStack &ip_stack){
     return false;
 }
 
-bool QueueTestTwo::connect_to_cloud(IPStack &ip_stack, const char* wifi_ssid, const char* wifi_password){
+bool Network::connect_to_cloud(IPStack &ip_stack, const char* wifi_ssid, const char* wifi_password){
     wifi_connected = false;
     http_connected = false;
 
@@ -160,7 +160,7 @@ bool QueueTestTwo::connect_to_cloud(IPStack &ip_stack, const char* wifi_ssid, co
 }
 
 //upload monitored data to the sensor
-bool QueueTestTwo::upload_sensor_data(IPStack &ip_stack, Monitored_data &data){
+bool Network::upload_sensor_data(IPStack &ip_stack, Monitored_data &data){
     char req[256];
 
     // Update fields using a minimal GET request - tested to work
@@ -197,7 +197,7 @@ bool QueueTestTwo::upload_sensor_data(IPStack &ip_stack, Monitored_data &data){
 }
 
 //upload co2 set level
-bool QueueTestTwo::upload_co2_set_level(IPStack &ip_stack, uint co2_set){
+bool Network::upload_co2_set_level(IPStack &ip_stack, uint co2_set){
     char req[256];
 
     // Update fields using a minimal GET request - tested to work
@@ -230,7 +230,7 @@ bool QueueTestTwo::upload_co2_set_level(IPStack &ip_stack, uint co2_set){
 }
 
 //getting co2 set level from talkback queue in cloud. field6 = co2 level set
-uint QueueTestTwo::read_co2_set_level(IPStack &ip_stack){
+uint Network::read_co2_set_level(IPStack &ip_stack){
     //ask for command from talkback
     const char *talkback_api = "api_key=WYYFXF0NGSZCUMW6";
     char req[256];
@@ -272,7 +272,7 @@ uint QueueTestTwo::read_co2_set_level(IPStack &ip_stack){
 }
 
 //extract json from thingspeak http respond
-char* QueueTestTwo::extract_thingspeak_http_body(){
+char* Network::extract_thingspeak_http_body(){
     char* body = strstr(buffer, "\r\n\r\n");
     if(body){
         body += 4;
@@ -281,7 +281,7 @@ char* QueueTestTwo::extract_thingspeak_http_body(){
     return nullptr;
 }
 
-int QueueTestTwo::disconnect_to_http(IPStack &ip_stack){
+int Network::disconnect_to_http(IPStack &ip_stack){
     int rc = ip_stack.disconnect();
     return rc;
 }

@@ -1,5 +1,5 @@
-#ifndef QUEUETEST_H
-#define QUEUETEST_H
+#ifndef UI_H
+#define UI_H
 #include "FreeRTOS.h"
 #include "queue.h"
 #include "task.h"
@@ -21,9 +21,9 @@ enum screens {
     PASS,
 };
 
-class QueueTest {
+class UI {
     public:
-        QueueTest(QueueHandle_t to_CO2, QueueHandle_t to_Network, QueueHandle_t to_UI,
+        UI(QueueHandle_t to_CO2, QueueHandle_t to_Network, QueueHandle_t to_UI,
                 uint32_t stack_size = 512, UBaseType_t priority = tskIDLE_PRIORITY + 1);
 
         static void task_wrap(void *pvParameters);
@@ -47,7 +47,7 @@ class QueueTest {
 
         Message received;
         // For interrupt
-        static QueueTest* instance;
+        static UI* instance;
         GPIO rotA;
         GPIO rotB;
         GPIO sw;
@@ -80,4 +80,4 @@ class QueueTest {
 
 
 
-#endif //QUEUETEST_H
+#endif //UI_H

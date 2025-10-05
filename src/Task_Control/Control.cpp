@@ -42,7 +42,7 @@ void Control::task_impl() {
         Monitored_data data{};
         MessageType msg = MONITORED_DATA;
         Message message{};
-        uint received_data;
+        Message received;
 
         //main CO2 control logic which is triggered by the timer for getting monitored data.
         if (xSemaphoreTake(timer_semphr, portMAX_DELAY) == pdTRUE) {
@@ -120,10 +120,10 @@ void Control::task_impl() {
         }
 
         //get data from UI and network. data type received: only uint CO2 set level.
-        if(xQueueReceive(to_CO2, &received_data, 0) == pdTRUE){
-            if(received_data < max_co2){
-                co2_set = received_data;
-                printf("CONTROL co2: %u\n", received_data);
+        if(xQueueReceive(to_CO2, &received, 0) == pdTRUE){
+            if(received.co2_set < max_co2){
+                co2_set = received.co2_set;
+                printf("CONTROL co2: %u\n", received.co2_set);
             }else
             {
                 printf("co2 set is not in acceptable range.\n");

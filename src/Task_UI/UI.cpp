@@ -1,10 +1,10 @@
-#include "QueueTest.h"
+#include "UI.h"
 
 #include <cstdio>
 
-QueueTest* QueueTest::instance = nullptr;
+UI* UI::instance = nullptr;
 
-QueueTest::QueueTest(QueueHandle_t to_CO2, QueueHandle_t to_Network, QueueHandle_t to_UI,uint32_t stack_size, UBaseType_t priority):
+UI::UI(QueueHandle_t to_CO2, QueueHandle_t to_Network, QueueHandle_t to_UI,uint32_t stack_size, UBaseType_t priority):
     to_CO2(to_CO2),
     to_Network(to_Network) ,
     to_UI(to_UI),
@@ -33,13 +33,13 @@ QueueTest::QueueTest(QueueHandle_t to_CO2, QueueHandle_t to_Network, QueueHandle
     xTaskCreate(task_wrap, name, stack_size, this, priority, nullptr);
 }
 
-void QueueTest::encoder_callback(uint gpio, uint32_t events) {
+void UI::encoder_callback(uint gpio, uint32_t events) {
     if (instance) {
         instance->handleEncoderCallback(gpio, events);
     }
 }
 // implementation of detectin encoder events
-void QueueTest::handleEncoderCallback(uint gpio, uint32_t events) {
+void UI::handleEncoderCallback(uint gpio, uint32_t events) {
     BaseType_t xHigherPriorityTaskWoken = pdFALSE;
     encoderEv ev;
     TickType_t current_time = xTaskGetTickCountFromISR();
@@ -60,12 +60,12 @@ void QueueTest::handleEncoderCallback(uint gpio, uint32_t events) {
     portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 }
 
-void QueueTest::task_wrap(void *pvParameters) {
-    auto *test = static_cast<QueueTest*>(pvParameters);
+void UI::task_wrap(void *pvParameters) {
+    auto *test = static_cast<UI*>(pvParameters);
     test->task_impl();
 }
 
-void QueueTest::task_impl() {
+void UI::task_impl() {
     Message send{};
     encoderEv ev;
 
@@ -141,6 +141,7 @@ void QueueTest::task_impl() {
                             // when saving the value need to send to queue
                             send.type = CO2_SET_DATA;
                             send.co2_set = co2_set;
+                            printf("FROM UI:%u\n", send.co2_set);
                             xQueueSendToBack(to_Network, &send, portMAX_DELAY);
                             xQueueSendToBack(to_CO2, &send, portMAX_DELAY);
                             current_screen = WELCOME;
@@ -219,7 +220,7 @@ void QueueTest::task_impl() {
 }
 
 // function to display different screens
-void QueueTest::display_screen() {
+void UI::display_screen() {
     display->fill(0);
 
     switch (current_screen) {
