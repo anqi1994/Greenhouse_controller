@@ -42,15 +42,9 @@ void QueueTestTwo::task_impl() {
 
     printf("SSID: %s, PASSWORD: %s\n", SSID, PASSWORD);
     IPStack ip_stack;
-    if(ip_stack.connect_WiFi(wifi_ssid, wifi_password,5)){
-        wifi_connected= true;
-    }
 
-    if(wifi_connected){
-        if(connect_to_http(ip_stack)){
-            http_connected = true;
-        }
-    }
+    bool cloud_connected = connect_to_cloud(ip_stack,wifi_ssid,wifi_password);
+
     printf("wifi: %d. http: %d\n",wifi_connected,http_connected);
 
     //Main logic to receive data from the queue, DO NOT DELETE! WE NEED IT.
@@ -143,6 +137,26 @@ bool QueueTestTwo::connect_to_http(IPStack &ip_stack){
         return true;
     }
     return false;
+}
+
+bool QueueTestTwo::connect_to_cloud(IPStack &ip_stack, const char* wifi_ssid, const char* wifi_password){
+    wifi_connected = false;
+    http_connected = false;
+
+    //checks if wifi connection is successful with 5 times trial
+    if(ip_stack.connect_WiFi(wifi_ssid, wifi_password,5)){
+        wifi_connected= true;
+    }
+
+    //check if http connection is successful and quickly disconnect it.
+    if(wifi_connected){
+        if(connect_to_http(ip_stack)){
+            http_connected = true;
+            disconnect_to_http(ip_stack);
+        }
+    }
+
+    return (wifi_connected && http_connected);
 }
 
 //upload monitored data to the sensor

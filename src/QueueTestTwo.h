@@ -23,6 +23,7 @@ private:
     bool upload_sensor_data(IPStack &ip_stack, Monitored_data &data);
     bool upload_co2_set_level(IPStack &ip_stack, uint co2_set);
     uint read_co2_set_level(IPStack &ip_stack);
+    bool connect_to_cloud(IPStack &ip_stack, const char* wifi_ssid, const char* wifi_password);
     QueueHandle_t to_CO2;
     QueueHandle_t to_UI;
     QueueHandle_t to_Network;
