@@ -6,6 +6,12 @@
 
 #include "IPStack.h"
 
+#include <projdefs.h>
+#include <lwip/dns.h>
+#include "FreeRTOS.h"
+#include "task.h"
+#include "portmacro.h"
+
 
 // To remove Pico example debugging functions during refactoring
 //#define DEBUG_printf(x, ...) {}
@@ -36,12 +42,39 @@ int IPStack::connect(uint32_t hostname, int port) {
 int IPStack::connect(const char *hostname, int port) {
     // check if the hostname requires DNS resolution
     if (!ip4addr_aton(hostname, &remote_addr)) {
-        // dns not implemented yet
-        return ERR_ARG;
+        // dns for converting domain to ip address
+        ip_addr_t resolved;
+        err_t err;
+        int retries = 0;
+        // dns, retries for 5 times
+        do {
+            err = dns_gethostbyname(hostname, &resolved, NULL, NULL);
+            if (err == ERR_OK) {
+                printf("DNS success. %s\n", ipaddr_ntoa(&resolved));
+                remote_addr = resolved;
+                break;
+            } else if (err == ERR_INPROGRESS) {
+                vTaskDelay(pdMS_TO_TICKS(500));
+                retries++;
+            } else {
+                printf("DNS fail. %d\n", err);
+                return ERR_ARG;
+            }
+        } while (retries < 5);
+
+        if (err != ERR_OK) {
+            printf("DNS timeout\n");
+            return ERR_ARG;
+        }
     }
+
     // open a socket connection
     DEBUG_printf("Connecting to %s port %u\n", ip4addr_ntoa(&remote_addr), port);
+    //add lock
+    cyw43_arch_lwip_begin();
     tcp_pcb = tcp_new_ip_type(IP_GET_TYPE(remote_addr));
+    //release lock
+    cyw43_arch_lwip_end();
     if (!tcp_pcb) {
         DEBUG_printf("failed to create pcb\n");
         return ERR_MEM;

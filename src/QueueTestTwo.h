@@ -27,7 +27,7 @@ private:
     QueueHandle_t to_UI;
     QueueHandle_t to_Network;
     const char *name = "TESTTWO";
-    const char *host = "35.168.172.60"; //domain for thingspeak
+    const char *host = "api.thingspeak.com";
     const int port = 80; //http service
     const char *write_api = "7RC0GM5VZK7VRPN7";
     const char *read_api = "9L9GPCBA6QG1ZC14";
