@@ -11,6 +11,7 @@ enum encoderEv {
     ROT_L,
     ROT_R,
     SW,
+    DONE,
 };
 
 enum screens {
@@ -40,10 +41,10 @@ class UI {
         QueueHandle_t to_UI;
         QueueHandle_t encoder_queue;
         const char *name = "TEST";
-        uint co2_set; // default value
+        uint co2_set;
         uint min_co2 = 500;
         uint max_co2 = 1990;
-        uint co2_edit; // initially same as co2_set
+        uint co2_edit;
 
         Message received;
         // For interrupt
@@ -51,7 +52,11 @@ class UI {
         GPIO rotA;
         GPIO rotB;
         GPIO sw;
-        TickType_t last_sw_time;
+        GPIO done_button;
+        TickType_t last_sw_time = 0;
+        // these are used so that entering ssid and pass exits when pressed longer
+        TickType_t last_done_time = 0;
+
 
         //data for display
         // these pointers are to use display throughout functions in the class
@@ -65,17 +70,37 @@ class UI {
         const char *welcome_menu[2] = { "SET CO2", "SET NETWORK" };
         const char *co2_menu[2] = { "SAVE", "BACK" };
         const char *network_menu[2] = { "CHANGE", "BACK" };
+        const char *text_entry_menu[2] = { "DELETE LAST", "OK" };
 
         uint current_menu_item = 0;
-        uint menu_size = 2;
+        //uint menu_size = 2;
         screens current_screen = WELCOME;
         bool screen_needs_update = true;
         bool editing_co2 = false;
 
+        // variables to use when setting network
+        static constexpr uint MAX_SSID_LENGTH = 32;
+        static constexpr uint MAX_PASSWORD_LENGTH = 32;
+
+        const char* ascii_chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+        uint ascii_length = 62;
+
+        std::string ssid_input;
+        std::string pass_input;
+        uint current_char_id = 0;
+        bool selecting_char = true;
+
         // functions for display
+        // different screen display handle
+        void welcome_screen(encoderEv ev);
+        void co2_screen(encoderEv ev);
+        void network_screen(encoderEv ev);
+        void text_entry_screen(encoderEv ev, std::string& input_str, uint max_len, screens next_screen);
+
         void display_screen();
-
-
+        void navigate_menu(encoderEv ev);
+        void reset_text_entry();
+        void change_screen(screens new_screen);
 };
 
 
