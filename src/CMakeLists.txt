@@ -48,6 +48,7 @@ add_executable(${ProjectName}
         Valve/Valve.cpp
         Valve/Valve.h
         QueueTest.cpp
+        QueueTest.h
         QueueTestTwo.cpp
         QueueTestTwo.h
         EEPROM/EEPROM.cpp

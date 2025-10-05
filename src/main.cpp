@@ -307,15 +307,15 @@ void timer_callback(TimerHandle_t xTimer) {
 int main() {
     stdio_init_all();
 
-    //measure_timer = xTimerCreate("measure_timer", pdMS_TO_TICKS(15000), pdTRUE, nullptr, timer_callback);
-    //measure_semaphore = xSemaphoreCreateBinary();
+    measure_timer = xTimerCreate("measure_timer", pdMS_TO_TICKS(15000), pdTRUE, nullptr, timer_callback);
+    measure_semaphore = xSemaphoreCreateBinary();
     to_control = xQueueCreate(10, sizeof(uint));
     to_UI = xQueueCreate(10, sizeof(Message));
     to_network = xQueueCreate(10, sizeof(Message));
 
-    //xTimerStart(measure_timer, 0);
+    xTimerStart(measure_timer, 0);
 
-    //Control control_task(measure_semaphore, to_UI,to_network,to_control);
+    Control control_task(measure_semaphore, to_UI,to_network,to_control);
     QueueTest test(to_control,to_network,to_UI);
     //QueueTestTwo testTwo(to_control,to_UI,to_network);
 

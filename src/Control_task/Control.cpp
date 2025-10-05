@@ -47,7 +47,8 @@ void Control::task_impl() {
         //main CO2 control logic which is triggered by the timer for getting monitored data.
         if (xSemaphoreTake(timer_semphr, portMAX_DELAY) == pdTRUE) {
             //getting monitored data from the sensors (GMP252- CO2, HMP60 -RH & TEM) -without Error checking
-            data.co2_val = co2.read_value();
+            //data.co2_val = co2.read_value();
+            data.co2_val = 1469;
             printf("co2_val: %u\n", data.co2_val);
             if(data.co2_val == 0){
                 //eeprom.writeLog("co2 measure failed this round");
@@ -55,11 +56,13 @@ void Control::task_impl() {
                 //eeprom.writeLog("co2 measured");
             }
             //vTaskDelay(pdMS_TO_TICKS(10));
-            data.temperature = tem_hum_sensor.read_tem();
+            //data.temperature = tem_hum_sensor.read_tem();
+            data.temperature = 26.9;
             printf("temperature: %.1f\n", data.temperature);
             //eeprom.writeLog("temp measured");
             //vTaskDelay(pdMS_TO_TICKS(10));
-            data.humidity = tem_hum_sensor.read_hum();
+            //data.humidity = tem_hum_sensor.read_hum();
+            data.humidity = 63.4;
             printf("humidity: %.1f\n", data.humidity);
             if(data.humidity == 0){
                 //humidity and temperature use the same sensor
@@ -68,7 +71,8 @@ void Control::task_impl() {
                 //eeprom.writeLog("humidity measured");
             }
 
-            data.fan_speed = fan.getSpeed();
+            //data.fan_speed = fan.getSpeed();
+            data.fan_speed = 100;
             printf("fan_speed: %u\n", data.fan_speed);
 
             //printf("pressure: %.1f\n", pressure_sensor.read());
