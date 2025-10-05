@@ -18,7 +18,7 @@ public:
 private:
     void task_impl();
     void load_wifi_cred();
-    int connect_to_http(IPStack &ip_stack);
+    bool connect_to_http(IPStack &ip_stack);
     int disconnect_to_http(IPStack &ip_stack);
     bool upload_sensor_data(IPStack &ip_stack, Monitored_data &data);
     bool upload_co2_set_level(IPStack &ip_stack, uint co2_set);
@@ -35,7 +35,8 @@ private:
     char buffer[BUFSIZE];
     const char *wifissid = "Julijaiph";
     const char *wifipass = "12341234";
-
+    bool wifi_connected = false;
+    bool http_connected = false;
 };
 
 #endif //QUEUETEST_H

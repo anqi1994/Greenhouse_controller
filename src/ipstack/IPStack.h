@@ -16,7 +16,12 @@
 
 class IPStack {
 public:
-    IPStack(const char *ssid, const char *pw);
+    IPStack();
+
+    //added for checking wifi connections and give bool value
+    bool connect_WiFi(const char* ssid, const char* password, int max_retries);
+    bool WiFi_connected();
+
     int connect(const char *hostname, int port);
     int connect(uint32_t hostname, int port);
     int read(unsigned char *buffer, int len, int timeout);
@@ -39,7 +44,8 @@ private:
     uint32_t dropped;
     uint16_t wr; // write index
     uint16_t rd; // read index
-    bool connected;
+    bool tcp_connected;
+    bool wifi_connected;
 };
 
 

@@ -99,7 +99,12 @@ void Control::task_impl() {
                 if (!valve_open) {
                     valve.open();
                     printf("valve open\n");
+
+                    //following is for real system,open the valve only for 0.5s!
                     vTaskDelay(pdMS_TO_TICKS(500));
+
+                    //following is for test system!!!!! valve opens for 5s to make sure CO2 level goes up.
+                    //vTaskDelay(pdMS_TO_TICKS(5000));
                     valve.close();
                     valve_open = true;
                     last_valve_time = xTaskGetTickCount();

@@ -19,21 +19,45 @@
 #define DUMP_BYTES(A, B) {}
 
 
-IPStack::IPStack(const char *ssid, const char *pw) : tcp_pcb{nullptr}, dropped{0}, count{0}, wr{0}, rd{0}, connected{false} {
+IPStack::IPStack() : tcp_pcb{nullptr}, dropped{0}, count{0}, wr{0}, rd{0}, tcp_connected{false},wifi_connected{false} {
+}
+
+bool IPStack::connect_WiFi(const char* ssid, const char* password, int max_retries){
+    //initialization
     if (cyw43_arch_init()) {
         DEBUG_printf("failed to initialise\n");
-        return;
+        return false;
     }
     cyw43_arch_enable_sta_mode();
 
     DEBUG_printf("Connecting to Wi-Fi...\n");
-    if (cyw43_arch_wifi_connect_timeout_ms(ssid, pw, CYW43_AUTH_WPA2_AES_PSK, 30000)) {
-        DEBUG_printf("Failed to connect.\n");
-    } else {
-        DEBUG_printf("Connected.\n");
+    for (int retry = 0; retry < max_retries; retry++){
+        if (cyw43_arch_wifi_connect_timeout_ms(ssid, password, CYW43_AUTH_WPA2_AES_PSK, 10000)) {
+            //try to connect to wifi
+            DEBUG_printf("Failed to connect WIFI.\n");
+            vTaskDelay(pdMS_TO_TICKS(2000));
+        } else {
+            DEBUG_printf("WIFI Connected.\n");
+
+            //make sure that DHCP gets ip address before moving
+            while (cyw43_tcpip_link_status(&cyw43_state, CYW43_ITF_STA) != CYW43_LINK_UP) {
+                vTaskDelay(pdMS_TO_TICKS(500));
+                DEBUG_printf("Waiting for IP...\n");
+            }
+            //update wifi_connected information
+            wifi_connected = true;
+            return true;
+        }
     }
+    DEBUG_printf("All attempts failed to connect to wifi.\n");
+    wifi_connected = false;
+    return false;
 
 }
+
+bool IPStack::WiFi_connected(){
+    return wifi_connected;
+};
 
 int IPStack::connect(uint32_t hostname, int port) {
     return ERR_ARG;
@@ -132,7 +156,7 @@ err_t IPStack::tcp_client_connected(void *arg, struct tcp_pcb *tpcb, err_t err) 
     if (err != ERR_OK) {
         printf("connect failed %d\n", err);
     }
-    state->connected = true;
+    state->tcp_connected = true;
 
     return ERR_OK;
 }

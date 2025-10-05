@@ -40,13 +40,21 @@ void QueueTestTwo::task_impl() {
 
     printf("tries to connect");
 
-    //printf("SSID: %s, PASSWORD: %s\n", SSID, PASSWORD);
-    IPStack ip_stack(wifi_ssid, wifi_password);
-    vTaskDelay(10000);
+    printf("SSID: %s, PASSWORD: %s\n", SSID, PASSWORD);
+    IPStack ip_stack;
+    if(ip_stack.connect_WiFi(wifi_ssid, wifi_password,5)){
+        wifi_connected= true;
+    }
+
+    if(wifi_connected){
+        if(connect_to_http(ip_stack)){
+            http_connected = true;
+        }
+    }
+    printf("wifi: %d. http: %d\n",wifi_connected,http_connected);
 
     //Main logic to receive data from the queue, DO NOT DELETE! WE NEED IT.
     while (true) {
-
         //get data from CO2_control and UI. data type received: 1. monitored data. 2. uint CO2 set level.
         if (xQueueReceive(to_Network, &received, portMAX_DELAY)) {
             //the received data is from CO2_control_task
@@ -59,7 +67,7 @@ void QueueTestTwo::task_impl() {
                 monitored_data.fan_speed = received.data.fan_speed;
             }
             printf("trying to connect to http");
-            if(connect_to_http(ip_stack)== 0){
+            if(connect_to_http(ip_stack)){
                 printf("goes here\n");
                 printf("Connected\n");
                 bool ok = upload_sensor_data(ip_stack,monitored_data);
@@ -99,7 +107,7 @@ void QueueTestTwo::task_impl() {
         //}
 
         //check every 15 from talkback queue
-        if (connect_to_http(ip_stack) == 0) {
+        if (connect_to_http(ip_stack)) {
             uint co2_set = read_co2_set_level(ip_stack);
             if(co2_set>0){
                 upload_co2_set_level(ip_stack,co2_set);
@@ -128,10 +136,13 @@ void QueueTestTwo::load_wifi_cred() {
 
 
 //connect to thingspeak service via http
-int QueueTestTwo::connect_to_http(IPStack &ip_stack){
+bool QueueTestTwo::connect_to_http(IPStack &ip_stack){
     printf("%s,%d",host,port);
     int rc = ip_stack.connect(host, port);
-    return rc;
+    if(rc == 0){
+        return true;
+    }
+    return false;
 }
 
 //upload monitored data to the sensor
