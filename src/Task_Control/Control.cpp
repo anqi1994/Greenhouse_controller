@@ -28,7 +28,7 @@ void Control::task_impl() {
     //CO2Sensor co2(rtu_client, 240, false);
     GMP252 co2(rtu_client, 240);
     HMP60 tem_hum_sensor(rtu_client,241);
-    SDP610 pressure_sensor(i2cbus0);
+    //SDP610 pressure_sensor(i2cbus0);
 
     //actuators: valve and fan
     Valve valve(27);
@@ -84,6 +84,7 @@ void Control::task_impl() {
             }else{
                 eeprom->writeLog("humidity measured");
             }
+
             data.fan_speed = fan.getSpeed();
             printf("fan_speed: %u\n", data.fan_speed);
 
@@ -159,6 +160,8 @@ void Control::task_impl() {
                 printf("co2 set is not in acceptable range.\n");
             }
         }
+
+        //eeprom.printAllLogs();
     }
 }
 
