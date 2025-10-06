@@ -8,12 +8,13 @@
 #include <memory>
 
 #define EEPROM_ADDRESS 0x50
-#define BUFFER_SIZE 64
-#define STATUS_MSG_COUNT 5
-#define LOG_COUNT 10
-#define MIN_LOG_ADDR (STATUS_MSG_COUNT * BUFFER_SIZE)
-#define MAX_LOG_ADDRESS (MIN_LOG_ADDR + (LOG_COUNT - 1) * BUFFER_SIZE)
-#define LOG_ADDR_STORAGE (MAX_LOG_ADDRESS + BUFFER_SIZE)
+#define STATUS_BUFF_SIZE 8
+#define STR_BUFFER_SIZE 64 //for log messages
+#define STATUS_MSG_COUNT 5 // 5 addresses saved for status updates like co2_set val or reboot detect
+#define LOG_COUNT 10 // max log messages until log entries are deleted
+#define MIN_LOG_ADDR (STATUS_MSG_COUNT * STR_BUFFER_SIZE)
+#define MAX_LOG_ADDRESS (MIN_LOG_ADDR + (LOG_COUNT - 1) * STR_BUFFER_SIZE)
+#define LOG_ADDR_STORAGE (MAX_LOG_ADDRESS + STR_BUFFER_SIZE)
 
 class EEPROM {
 public:
