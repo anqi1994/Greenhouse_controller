@@ -7,7 +7,7 @@ Produal::Produal(std::shared_ptr<ModbusClient> client, int server_address)
     {}
 
 //set the Speed of the fan
-void Produal::setSpeed(int speed){
+void Produal::setSpeed(uint16_t speed){
     if (speed < 0) speed = 0;
     if (speed > 100) speed = 100;
     produal_speed.write(speed * 10);

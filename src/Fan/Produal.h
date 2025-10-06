@@ -7,7 +7,7 @@ class Produal{
 public:
     Produal(std::shared_ptr<ModbusClient> client, int server_address);
 
-    void setSpeed(int value);
+    void setSpeed(uint16_t value);
     uint16_t returnPulse();
     uint16_t getSpeed() const;
 

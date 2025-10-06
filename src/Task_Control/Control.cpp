@@ -1,7 +1,11 @@
 #include "Control.h"
 
 
-Control::Control(SemaphoreHandle_t timer, QueueHandle_t to_UI, QueueHandle_t to_Network, QueueHandle_t to_CO2,EventGroupHandle_t network_event_group,uint32_t stack_size, UBaseType_t priority) :
+Control::Control(SemaphoreHandle_t timer,
+    QueueHandle_t to_UI, QueueHandle_t to_Network, QueueHandle_t to_CO2,
+    EventGroupHandle_t network_event_group,
+    uint32_t stack_size,
+    UBaseType_t priority) :
     timer_semphr(timer), to_UI(to_UI), to_Network(to_Network) ,to_CO2 (to_CO2),network_event_group(network_event_group){
 
     xTaskCreate(task_wrap, name, stack_size, this, priority, nullptr);
@@ -16,7 +20,7 @@ void Control::task_impl() {
     // protocol initialization
     auto uart = std::make_shared<PicoOsUart>(UART_NR, UART_TX_PIN, UART_RX_PIN, BAUD_RATE, STOP_BITS);
     auto rtu_client = std::make_shared<ModbusClient>(uart);
-    auto i2cbus1 = std::make_shared<PicoI2C>(1, 100000);
+    //auto i2cbus1 = std::make_shared<PicoI2C>(1, 100000); for pressure, but not used
     auto i2cbus0 = std::make_shared<PicoI2C>(0, 100000);
 
 
@@ -24,25 +28,29 @@ void Control::task_impl() {
     //CO2Sensor co2(rtu_client, 240, false);
     GMP252 co2(rtu_client, 240);
     HMP60 tem_hum_sensor(rtu_client,241);
-    SDP610 pressure_sensor(i2cbus1);
+    SDP610 pressure_sensor(i2cbus0);
 
     //actuators: valve and fan
     Valve valve(27);
     Produal fan(rtu_client, 1);
 
     // EEPROM extern memory
-    EEPROM eeprom(i2cbus0);
+    eeprom = std::make_shared<EEPROM>(i2cbus0);
+    check_last_eeprom_data(&last_co2_set, &last_fan_speed);
+    if (last_fan_speed == 100) {
+        printf("SPEED WAS 100");
+        fan.setSpeed(last_fan_speed);
+    }
+    Message from_eeprom;
+    from_eeprom.type = CO2_SET_DATA;
+    from_eeprom.co2_set = last_co2_set;
+    xQueueSendToBack(to_UI, &from_eeprom, portMAX_DELAY);
+    printf("EEPROM CO2: %u\n", last_co2_set);
+
     //this is just for testing, co2_set needs to be retrieved from UI/network.
     uint co2_set = 1500;
     TickType_t last_valve_time = xTaskGetTickCount();
     bool valve_open = false;
-
-    if (eeprom.readStatus(CO2_SET_ADDR, eeprom_buffer, STATUS_BUFF_SIZE)) {
-        last_co2_set = atoi(eeprom_buffer);
-    }
-    if (last_co2_set != 0) {
-        printf("last_co2_set = %d\n", last_co2_set);
-    }
 
     while(true) {
         //monitored data and message type are saved in structs.h
@@ -54,33 +62,33 @@ void Control::task_impl() {
 
         //main CO2 control logic which is triggered by the timer for getting monitored data.
         if (xSemaphoreTake(timer_semphr, pdMS_TO_TICKS(10)) == pdTRUE) {
-            eeprom.printAllLogs();
+            eeprom->printAllLogs();
             //getting monitored data from the sensors (GMP252- CO2, HMP60 -RH & TEM) -without Error checking
             data.co2_val = co2.read_value();
             printf("co2_val: %u\n", data.co2_val);
             if(data.co2_val == 0){
-                eeprom.writeLog("co2 measure failed this round");
+                eeprom->writeLog("co2 measure failed this round");
             }else{
-                eeprom.writeLog("co2 measured");
+                eeprom->writeLog("co2 measured");
             }
             //vTaskDelay(pdMS_TO_TICKS(10));
             data.temperature = tem_hum_sensor.read_tem();
             printf("temperature: %.1f\n", data.temperature);
-            eeprom.writeLog("temp measured");
+            eeprom->writeLog("temp measured");
             vTaskDelay(pdMS_TO_TICKS(10));
             data.humidity = tem_hum_sensor.read_hum();
             printf("humidity: %.1f\n", data.humidity);
             if(data.humidity == 0){
                 //humidity and temperature use the same sensor
-                eeprom.writeLog("T&RH measure failed this round");
+                eeprom->writeLog("T&RH measure failed this round");
             }else{
-                eeprom.writeLog("humidity measured");
+                eeprom->writeLog("humidity measured");
             }
             data.fan_speed = fan.getSpeed();
             printf("fan_speed: %u\n", data.fan_speed);
 
             //printf("pressure: %.1f\n", pressure_sensor.read());
-            eeprom.writeLog("pressure measured");
+            eeprom->writeLog("pressure measured");
             //vTaskDelay(pdMS_TO_TICKS(10));
             message.type = msg;
             message.data = data;
@@ -99,6 +107,8 @@ void Control::task_impl() {
             } else{
                 fan.setSpeed(0);
             }
+            snprintf(eeprom_buffer, sizeof(eeprom_buffer), "%u", fan.getSpeed());
+            eeprom->writeStatus(FAN_SPEED_ADDR, eeprom_buffer);
 
             message.data.fan_speed = fan.getSpeed();
             // send data to queues from co2 control task
@@ -112,7 +122,7 @@ void Control::task_impl() {
                 if (!valve_open) {
                     valve.open();
                     printf("valve open\n");
-                    eeprom.writeLog("valve open");
+                    eeprom->writeLog("valve open");
 
                     //following is for real system,open the valve only for 0.5s!
                     //vTaskDelay(pdMS_TO_TICKS(500));
@@ -120,7 +130,7 @@ void Control::task_impl() {
                     //following is for test system!!!!! valve opens for 5s to make sure CO2 level goes up.
                     vTaskDelay(pdMS_TO_TICKS(5000));
                     valve.close();
-                    eeprom.writeLog("valve closed");
+                    eeprom->writeLog("valve closed");
                     valve_open = true;
                     last_valve_time = xTaskGetTickCount();
                 } else {
@@ -139,9 +149,9 @@ void Control::task_impl() {
             if(received.co2_set < max_co2){
                 co2_set = received.co2_set;
                 snprintf(eeprom_buffer, sizeof(eeprom_buffer), "%u", co2_set);
-                if (eeprom.writeStatus(CO2_SET_ADDR, eeprom_buffer)) {
-                    printf("co2 set val written to EEPROM");
-                    eeprom.writeLog("co2 val changed");
+                if (eeprom->writeStatus(CO2_SET_ADDR, eeprom_buffer)) {
+                    printf("co2 set val written to EEPROM\n");
+                    eeprom->writeLog("co2 val changed");
                 }
                 printf("CONTROL co2: %u\n", received.co2_set);
             }else
@@ -165,3 +175,16 @@ bool Control::check_fan(Produal &fan){
     }
     return true; //fan is working
 }
+
+void Control::check_last_eeprom_data(uint16_t *last_co2_set, uint16_t *last_fan_speed/*bool *is_rebooted, */) {
+    // eeprom checking last saved data
+    eeprom->readStatus(CO2_SET_ADDR, eeprom_buffer, STATUS_BUFF_SIZE);
+    *last_co2_set = atoi(eeprom_buffer);
+
+    /*if (last_co2_set != 0) {
+        printf("last_co2_set = %u\n", *last_co2_set);
+    }*/
+    eeprom->readStatus(FAN_SPEED_ADDR, eeprom_buffer, STATUS_BUFF_SIZE);
+    *last_fan_speed = atoi(eeprom_buffer);
+}
+
