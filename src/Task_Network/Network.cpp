@@ -7,8 +7,8 @@
 static char wifi_ssid[32];
 static char wifi_password[64];
 
-Network::Network(QueueHandle_t to_CO2,  QueueHandle_t to_UI, QueueHandle_t to_Network,uint32_t stack_size, UBaseType_t priority):
-    to_CO2(to_CO2),to_UI (to_UI),to_Network(to_Network){
+Network::Network(QueueHandle_t to_CO2,  QueueHandle_t to_UI, QueueHandle_t to_Network,EventGroupHandle_t network_event_group,uint32_t stack_size, UBaseType_t priority):
+    to_CO2(to_CO2),to_UI (to_UI),to_Network(to_Network),network_event_group(network_event_group){
 
     load_wifi_cred();
     xTaskCreate(task_wrap, name, stack_size, this, priority, nullptr);

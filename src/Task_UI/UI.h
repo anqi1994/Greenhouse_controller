@@ -6,6 +6,7 @@
 #include "GPIO/GPIO.h"
 #include "ssd1306os.h"
 #include "Structs.h"
+#include <event_groups.h>
 
 enum encoderEv {
     ROT_L,
@@ -24,7 +25,7 @@ enum screens {
 
 class UI {
     public:
-        UI(QueueHandle_t to_CO2, QueueHandle_t to_Network, QueueHandle_t to_UI,
+        UI(QueueHandle_t to_CO2, QueueHandle_t to_Network, QueueHandle_t to_UI, EventGroupHandle_t network_event_group,
                 uint32_t stack_size = 2048, UBaseType_t priority = tskIDLE_PRIORITY + 1);
 
         static void task_wrap(void *pvParameters);
@@ -89,6 +90,8 @@ class UI {
         std::string pass_input;
         uint current_char_id = 0;
         bool selecting_char = true;
+        EventGroupHandle_t network_event_group;
+
 
         // functions for display
         // different screen display handle

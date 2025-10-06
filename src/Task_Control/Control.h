@@ -17,12 +17,13 @@
 #include "Valve/Valve.h"
 #include "Structs.h"
 #include "EEPROM/EEPROM.h"
+#include <event_groups.h>
 
 
 
 class Control {
 public:
-    Control(SemaphoreHandle_t timer, QueueHandle_t to_UI, QueueHandle_t to_Network, QueueHandle_t to_CO2,uint32_t stack_size = 1024, UBaseType_t priority = tskIDLE_PRIORITY + 2);
+    Control(SemaphoreHandle_t timer, QueueHandle_t to_UI, QueueHandle_t to_Network, QueueHandle_t to_CO2,EventGroupHandle_t network_event_group,uint32_t stack_size = 1024, UBaseType_t priority = tskIDLE_PRIORITY + 2);
     static void task_wrap(void *pvParameters);
 
 
@@ -40,6 +41,7 @@ private:
     QueueHandle_t to_UI;
     QueueHandle_t to_Network;
     QueueHandle_t to_CO2;
+    EventGroupHandle_t network_event_group;
 };
 
 #endif //CONTROL_H

@@ -4,10 +4,11 @@
 
 UI* UI::instance = nullptr;
 
-UI::UI(QueueHandle_t to_CO2, QueueHandle_t to_Network, QueueHandle_t to_UI,uint32_t stack_size, UBaseType_t priority):
+UI::UI(QueueHandle_t to_CO2, QueueHandle_t to_Network, QueueHandle_t to_UI, EventGroupHandle_t network_event_group, uint32_t stack_size, UBaseType_t priority):
     to_CO2(to_CO2),
     to_Network(to_Network) ,
     to_UI(to_UI),
+    network_event_group(network_event_group),
     rotA(10, true, false, false),
     rotB(11),
     sw(12),
