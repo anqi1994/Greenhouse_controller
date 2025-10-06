@@ -2,6 +2,7 @@
 #define STRUCTS_H
 //all the structs that are needed in this project.
 
+
 //monitored data gathered from the sensors
 struct Monitored_data{
     uint16_t co2_val;
@@ -13,7 +14,13 @@ struct Monitored_data{
 //define the two types of messages to be sent to different queues
 enum MessageType{
     MONITORED_DATA,
-    CO2_SET_DATA
+    CO2_SET_DATA,
+    NETWORK_CONFIG,
+};
+
+struct NetworkConfig{
+    const char *ssid;
+    const char *password;
 };
 
 //combine message type and data
@@ -22,6 +29,7 @@ struct Message{
 
     Monitored_data data;
     uint co2_set;
+    NetworkConfig network_config;
 };
 
 #endif //STRUCTS_H

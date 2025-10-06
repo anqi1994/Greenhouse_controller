@@ -283,9 +283,14 @@ void UI::text_entry_screen(encoderEv ev, std::string& input_str, uint max_len, s
                     reset_text_entry();
                     pass_input.clear();
                 } else {
+                    Message send{};
+                    send.type = NETWORK_CONFIG;
                     printf("SSID ENTERED: %s\n", ssid_input.c_str());
                     printf("PASS ENTERED: %s\n", pass_input.c_str());
-                    // todo: send this data to queue (ssid_input.c_str() and pass)
+
+                    send.network_config.password = pass_input.c_str();
+                    send.network_config.ssid = ssid_input.c_str();
+                    xQueueSendToBack(to_Network, &send, portMAX_DELAY);
                     change_screen(WELCOME);
                 }
             }
@@ -347,7 +352,7 @@ void UI::display_screen() {
 
         case NET_SET:
             display->text("CURRENT:", (oled_width-100), 0);
-            //todo: display 'connected' 'not connected' depending on event bits
+            //todo: display variable from queue (from EEPROM)
             display->text("Julijaiph", (oled_width-105), line_height*2);
 
             for (uint i = 0; i < 2; i++) {

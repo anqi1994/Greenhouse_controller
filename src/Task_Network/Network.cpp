@@ -43,7 +43,7 @@ void Network::task_impl() {
     //printf("SSID: %s, PASSWORD: %s\n", SSID, PASSWORD);
     IPStack ip_stack;
 
-    bool cloud_connected = connect_to_cloud(ip_stack,wifi_ssid,wifi_password);
+    //bool cloud_connected = connect_to_cloud(ip_stack,wifi_ssid,wifi_password);
 
     printf("wifi: %d. http: %d\n",wifi_connected,http_connected);
 
@@ -89,6 +89,12 @@ void Network::task_impl() {
                 // not sure if this is ok?
                 upload_co2_set_level(ip_stack, co2_set);
                 //printf("QUEUE to network from UI: co2_set: %d\n", co2_set);
+            }
+            else if(received.type == NETWORK_CONFIG){
+                wifissid= received.network_config.ssid;
+                wifipass= received.network_config.password;
+                printf("received ssid: %s, password: %s",wifissid,wifipass);
+                connect_to_cloud(ip_stack,wifi_ssid,wifi_password);
             }
         }
 
