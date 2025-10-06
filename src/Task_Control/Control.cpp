@@ -30,7 +30,7 @@ void Control::task_impl() {
     Valve valve(27);
     Produal fan(rtu_client, 1);
 
-    // EEPROM memory chip
+    // EEPROM extern memory
     EEPROM eeprom(i2cbus0);
     //this is just for testing, co2_set needs to be retrieved from UI/network.
     uint co2_set = 1500;
@@ -50,29 +50,28 @@ void Control::task_impl() {
             data.co2_val = co2.read_value();
             printf("co2_val: %u\n", data.co2_val);
             if(data.co2_val == 0){
-                //eeprom.writeLog("co2 measure failed this round");
+                eeprom.writeLog("co2 measure failed this round");
             }else{
-                //eeprom.writeLog("co2 measured");
+                eeprom.writeLog("co2 measured");
             }
             //vTaskDelay(pdMS_TO_TICKS(10));
             data.temperature = tem_hum_sensor.read_tem();
             printf("temperature: %.1f\n", data.temperature);
-            //eeprom.writeLog("temp measured");
-            //vTaskDelay(pdMS_TO_TICKS(10));
+            eeprom.writeLog("temp measured");
+            vTaskDelay(pdMS_TO_TICKS(10));
             data.humidity = tem_hum_sensor.read_hum();
             printf("humidity: %.1f\n", data.humidity);
             if(data.humidity == 0){
                 //humidity and temperature use the same sensor
-                //eeprom.writeLog("T&RH measure failed this round");
+                eeprom.writeLog("T&RH measure failed this round");
             }else{
-                //eeprom.writeLog("humidity measured");
+                eeprom.writeLog("humidity measured");
             }
-
             data.fan_speed = fan.getSpeed();
             printf("fan_speed: %u\n", data.fan_speed);
 
             //printf("pressure: %.1f\n", pressure_sensor.read());
-            //eeprom.writeLog("pressure measured");
+            eeprom.writeLog("pressure measured");
             //vTaskDelay(pdMS_TO_TICKS(10));
             message.type = msg;
             message.data = data;
@@ -104,6 +103,7 @@ void Control::task_impl() {
                 if (!valve_open) {
                     valve.open();
                     printf("valve open\n");
+                    eeprom.writeLog("valve open");
 
                     //following is for real system,open the valve only for 0.5s!
                     //vTaskDelay(pdMS_TO_TICKS(500));
@@ -111,6 +111,7 @@ void Control::task_impl() {
                     //following is for test system!!!!! valve opens for 5s to make sure CO2 level goes up.
                     vTaskDelay(pdMS_TO_TICKS(5000));
                     valve.close();
+                    eeprom.writeLog("valve closed");
                     valve_open = true;
                     last_valve_time = xTaskGetTickCount();
                 } else {
@@ -128,6 +129,7 @@ void Control::task_impl() {
         if(xQueueReceive(to_CO2, &received, 0) == pdTRUE){
             if(received.co2_set < max_co2){
                 co2_set = received.co2_set;
+                if (eeprom.eepromWrite(CO2_SET_ADDR, co2_set, STATUS_BUFF_SIZE))
                 printf("CONTROL co2: %u\n", received.co2_set);
             }else
             {
@@ -135,7 +137,7 @@ void Control::task_impl() {
             }
         }
 
-        //eeprom.printAllLogs();
+        eeprom.printAllLogs();
     }
 }
 

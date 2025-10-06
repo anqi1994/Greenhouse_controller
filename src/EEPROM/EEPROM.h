@@ -8,11 +8,22 @@
 #include <memory>
 
 #define EEPROM_ADDRESS 0x50
-#define STATUS_BUFF_SIZE 8
+#define STATUS_BUFF_SIZE 8 // for status updates
 #define STR_BUFFER_SIZE 64 //for log messages
+
 #define STATUS_MSG_COUNT 5 // 5 addresses saved for status updates like co2_set val or reboot detect
+//addresses for specific status updates
+#define REBOOT_ADDR 0x00
+#define CO2_SET_ADDR (REBOOT_ADDR + STATUS_BUFF_SIZE)
+#define FAN_SPEED_ADDR (CO2_SET_ADDR + STATUS_BUFF_SIZE)
+
 #define LOG_COUNT 10 // max log messages until log entries are deleted
-#define MIN_LOG_ADDR (STATUS_MSG_COUNT * STR_BUFFER_SIZE)
+
+//address for saving wifi credentials
+#define WIFI_SSID_ADDR (STATUS_MSG_COUNT * STATUS_BUFF_SIZE)
+#define WIFI_PASS_ADDR (WIFI_SSID_ADDR + STR_BUFFER_SIZE)
+
+#define MIN_LOG_ADDR (WIFI_PASS_ADDR + STR_BUFFER_SIZE)
 #define MAX_LOG_ADDRESS (MIN_LOG_ADDR + (LOG_COUNT - 1) * STR_BUFFER_SIZE)
 #define LOG_ADDR_STORAGE (MAX_LOG_ADDRESS + STR_BUFFER_SIZE)
 
