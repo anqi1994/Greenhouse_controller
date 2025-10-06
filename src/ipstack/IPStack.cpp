@@ -6,6 +6,12 @@
 
 #include "IPStack.h"
 
+#include <projdefs.h>
+#include <lwip/dns.h>
+#include "FreeRTOS.h"
+#include "task.h"
+#include "portmacro.h"
+
 
 // To remove Pico example debugging functions during refactoring
 //#define DEBUG_printf(x, ...) {}
@@ -13,21 +19,45 @@
 #define DUMP_BYTES(A, B) {}
 
 
-IPStack::IPStack(const char *ssid, const char *pw) : tcp_pcb{nullptr}, dropped{0}, count{0}, wr{0}, rd{0}, connected{false} {
+IPStack::IPStack() : tcp_pcb{nullptr}, dropped{0}, count{0}, wr{0}, rd{0}, tcp_connected{false},wifi_connected{false} {
+}
+
+bool IPStack::connect_WiFi(const char* ssid, const char* password, int max_retries){
+    //initialization
     if (cyw43_arch_init()) {
         DEBUG_printf("failed to initialise\n");
-        return;
+        return false;
     }
     cyw43_arch_enable_sta_mode();
 
     DEBUG_printf("Connecting to Wi-Fi...\n");
-    if (cyw43_arch_wifi_connect_timeout_ms(ssid, pw, CYW43_AUTH_WPA2_AES_PSK, 30000)) {
-        DEBUG_printf("Failed to connect.\n");
-    } else {
-        DEBUG_printf("Connected.\n");
+    for (int retry = 0; retry < max_retries; retry++){
+        if (cyw43_arch_wifi_connect_timeout_ms(ssid, password, CYW43_AUTH_WPA2_AES_PSK, 10000)) {
+            //try to connect to wifi
+            DEBUG_printf("Failed to connect WIFI.\n");
+            vTaskDelay(pdMS_TO_TICKS(2000));
+        } else {
+            DEBUG_printf("WIFI Connected.\n");
+
+            //make sure that DHCP gets ip address before moving
+            while (cyw43_tcpip_link_status(&cyw43_state, CYW43_ITF_STA) != CYW43_LINK_UP) {
+                vTaskDelay(pdMS_TO_TICKS(500));
+                DEBUG_printf("Waiting for IP...\n");
+            }
+            //update wifi_connected information
+            wifi_connected = true;
+            return true;
+        }
     }
+    DEBUG_printf("All attempts failed to connect to wifi.\n");
+    wifi_connected = false;
+    return false;
 
 }
+
+bool IPStack::WiFi_connected(){
+    return wifi_connected;
+};
 
 int IPStack::connect(uint32_t hostname, int port) {
     return ERR_ARG;
@@ -36,12 +66,39 @@ int IPStack::connect(uint32_t hostname, int port) {
 int IPStack::connect(const char *hostname, int port) {
     // check if the hostname requires DNS resolution
     if (!ip4addr_aton(hostname, &remote_addr)) {
-        // dns not implemented yet
-        return ERR_ARG;
+        // dns for converting domain to ip address
+        ip_addr_t resolved;
+        err_t err;
+        int retries = 0;
+        // dns, retries for 5 times
+        do {
+            err = dns_gethostbyname(hostname, &resolved, NULL, NULL);
+            if (err == ERR_OK) {
+                printf("DNS success. %s\n", ipaddr_ntoa(&resolved));
+                remote_addr = resolved;
+                break;
+            } else if (err == ERR_INPROGRESS) {
+                vTaskDelay(pdMS_TO_TICKS(500));
+                retries++;
+            } else {
+                printf("DNS fail. %d\n", err);
+                return ERR_ARG;
+            }
+        } while (retries < 5);
+
+        if (err != ERR_OK) {
+            printf("DNS timeout\n");
+            return ERR_ARG;
+        }
     }
+
     // open a socket connection
     DEBUG_printf("Connecting to %s port %u\n", ip4addr_ntoa(&remote_addr), port);
+    //add lock
+    cyw43_arch_lwip_begin();
     tcp_pcb = tcp_new_ip_type(IP_GET_TYPE(remote_addr));
+    //release lock
+    cyw43_arch_lwip_end();
     if (!tcp_pcb) {
         DEBUG_printf("failed to create pcb\n");
         return ERR_MEM;
@@ -99,7 +156,7 @@ err_t IPStack::tcp_client_connected(void *arg, struct tcp_pcb *tpcb, err_t err) 
     if (err != ERR_OK) {
         printf("connect failed %d\n", err);
     }
-    state->connected = true;
+    state->tcp_connected = true;
 
     return ERR_OK;
 }
@@ -230,7 +287,7 @@ int IPStack::read(unsigned char *buffer, int len, int timeout) {
     return bytes_to_copy+first_copy;
 }
 
-int IPStack::write(unsigned char *buffer, int len, int timeout) {
+int IPStack::write(unsigned char *buffer, int len) {
     int rv = len;
     // cyw43_arch_lwip_begin/end should be used around calls into lwIP to ensure correct locking.
     // You can omit them if you are in a callback from lwIP. Note that when using pico_cyw_arch_poll

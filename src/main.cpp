@@ -1,12 +1,20 @@
 #include <iostream>
 #include <sstream>
+#include <pico/stdio.h>
+
 #include "FreeRTOS.h"
 #include "task.h"
 #include "semphr.h"
+#include "timers.h"
 #include "hardware/gpio.h"
 #include "PicoOsUart.h"
 #include "ssd1306.h"
+#include "modbus/ModbusClient.h"
+#include "Structs.h"
 
+#include "Task_Network/Network.h"
+#include "Task_Control/Control.h"
+#include "Task_UI/UI.h"
 
 #include "hardware/timer.h"
 extern "C" {
@@ -14,7 +22,7 @@ uint32_t read_runtime_ctr(void) {
     return timer_hw->timerawl;
 }
 }
-
+#if 0
 #include "blinker.h"
 
 SemaphoreHandle_t gpio_sem;
@@ -101,6 +109,9 @@ void serial_task(void *param)
 void modbus_task(void *param);
 void display_task(void *param);
 void i2c_task(void *param);
+void fan_task(void *param);
+void co2_task(void *param);
+
 extern "C" {
     void tls_test(void);
 }
@@ -111,18 +122,8 @@ void tls_task(void *param)
         vTaskDelay(100);
     }
 }
+#endif
 
-int main()
-{
-    static led_params lp1 = { .pin = 20, .delay = 300 };
-    stdio_init_all();
-    printf("\nBoot\n");
-
-    gpio_sem = xSemaphoreCreateBinary();
-    //xTaskCreate(blink_task, "LED_1", 256, (void *) &lp1, tskIDLE_PRIORITY + 1, nullptr);
-    //xTaskCreate(gpio_task, "BUTTON", 256, (void *) nullptr, tskIDLE_PRIORITY + 1, nullptr);
-    //xTaskCreate(serial_task, "UART1", 256, (void *) nullptr,
-    //            tskIDLE_PRIORITY + 1, nullptr);
 #if 0
     xTaskCreate(modbus_task, "Modbus", 512, (void *) nullptr,
                 tskIDLE_PRIORITY + 1, nullptr);
@@ -131,7 +132,7 @@ int main()
     xTaskCreate(display_task, "SSD1306", 512, (void *) nullptr,
                 tskIDLE_PRIORITY + 1, nullptr);
 #endif
-#if 1
+#if 0
     xTaskCreate(i2c_task, "i2c test", 512, (void *) nullptr,
                 tskIDLE_PRIORITY + 1, nullptr);
 #endif
@@ -139,6 +140,16 @@ int main()
     xTaskCreate(tls_task, "tls test", 6000, (void *) nullptr,
                 tskIDLE_PRIORITY + 1, nullptr);
 #endif
+#if 0
+    xTaskCreate(fan_task, "Fan", 1024, nullptr,
+        tskIDLE_PRIORITY+1, nullptr);
+
+#endif
+#if 0
+    xTaskCreate(co2_task, "co2", 512, nullptr,
+        tskIDLE_PRIORITY+1, nullptr);
+
+
     vTaskStartScheduler();
 
     while(true){};
@@ -148,17 +159,18 @@ int main()
 #include "ModbusClient.h"
 #include "ModbusRegister.h"
 
+
 // We are using pins 0 and 1, but see the GPIO function select table in the
 // datasheet for information on which other pins can be used.
-#if 0
+
 #define UART_NR 0
 #define UART_TX_PIN 0
 #define UART_RX_PIN 1
-#else
+
 #define UART_NR 1
 #define UART_TX_PIN 4
 #define UART_RX_PIN 5
-#endif
+
 
 #define BAUD_RATE 9600
 #define STOP_BITS 2 // for real system (pico simualtor also requires 2 stop bits)
@@ -188,6 +200,7 @@ void modbus_task(void *param) {
     auto rtu_client{std::make_shared<ModbusClient>(uart)};
     ModbusRegister rh(rtu_client, 241, 256);
     ModbusRegister t(rtu_client, 241, 257);
+    ModbusRegister co2_int(rtu_client, 240, 256);
     ModbusRegister produal(rtu_client, 1, 0);
     produal.write(100);
     vTaskDelay((100));
@@ -200,6 +213,8 @@ void modbus_task(void *param) {
         printf("RH=%5.1f%%\n", rh.read() / 10.0);
         vTaskDelay(5);
         printf("T =%5.1f%%\n", t.read() / 10.0);
+        int16_t ppm = (int16_t)co2_int.read();
+        printf("CO2 = %d ppm\n", (int)ppm);
         vTaskDelay(3000);
 #endif
     }
@@ -255,5 +270,56 @@ void i2c_task(void *param) {
         vTaskDelay(delay);
     }
 
+}
 
+void co2_task(void *param) {
+    // In your task:
+    auto uart = std::make_shared<PicoOsUart>(UART_NR, UART_TX_PIN, UART_RX_PIN, 9600, /*STOP_BITS=*/2);
+    auto rtu  = std::make_shared<ModbusClient>(uart);
+
+    // Prefer IR30257 on the simulator; set use_scaled=false.
+    // On real GMP252 you may use scaled=true (IR30258) if desired.
+    CO2Sensor co2(rtu, /*slave=*/240, /*use_scaled=*/false, /*min_interval_ms=*/200);
+
+    for (;;) {
+        int ppm = co2.readPpm();
+        if (!co2.isWorking()) {
+            printf("CO2 read failed, keep last=%d ppm\n", co2.lastPpm());
+        } else {
+            printf("CO2 = %d ppm (raw=%d)\n", ppm, co2.lastRaw());
+        }
+        vTaskDelay(pdMS_TO_TICKS(1000));
+    }
+}
+
+#endif
+
+TimerHandle_t measure_timer;
+SemaphoreHandle_t measure_semaphore;
+QueueHandle_t to_control;
+QueueHandle_t to_UI;
+QueueHandle_t to_network;
+
+void timer_callback(TimerHandle_t xTimer) {
+    xSemaphoreGive(measure_semaphore);
+}
+
+int main() {
+    stdio_init_all();
+
+    measure_timer = xTimerCreate("measure_timer", pdMS_TO_TICKS(20000), pdTRUE, nullptr, timer_callback);
+    measure_semaphore = xSemaphoreCreateBinary();
+    to_control = xQueueCreate(10, sizeof(Message));
+    to_UI = xQueueCreate(10, sizeof(Message));
+    to_network = xQueueCreate(10, sizeof(Message));
+
+    xTimerStart(measure_timer, 0);
+
+    Control control_task(measure_semaphore, to_UI,to_network,to_control);
+    UI ui_task(to_control,to_network,to_UI);
+    Network network_task(to_control,to_UI,to_network);
+
+    vTaskStartScheduler();
+
+    while(true) {};
 }

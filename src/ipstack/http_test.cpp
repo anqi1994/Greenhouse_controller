@@ -1,4 +1,4 @@
-#include <iostream>
+/*#include <iostream>
 #include <sstream>
 #include <cstring>
 #include "FreeRTOS.h"
@@ -24,8 +24,8 @@ uint32_t read_runtime_ctr(void) {
  /* Add a command to Talkback queue with curl (a command line utility)
   * curl -v -d "command_string=my%20fancy%20command&api_key=371DAWENQKI6J8DD" http://api.thingspeak.com/talkbacks/52920/commands
   * */
-void test_task(void *param) {
-    (void) param;
+/*void test_task(void *param) {
+    (void) param;*/
 #if 0
     // this works
     const char *req = "POST /talkbacks/52920/commands/execute.json HTTP/1.1\r\n"
@@ -37,7 +37,7 @@ void test_task(void *param) {
                       "\r\n"
                       "api_key=371DAWENQKI6J8DD";
 #endif
-#if 1
+#if 0
      // Execute (= get and remove) next command from talkback queue - tested to work
     const char *req = "POST /talkbacks/52920/commands/execute.json HTTP/1.1\r\n"
                       "Host: api.thingspeak.com\r\n"
@@ -79,7 +79,7 @@ void test_task(void *param) {
                       "Host: api.thingspeak.com\r\n"
                       "\r\n";
 #endif
-    printf("\nconnecting...\n");
+    /*printf("\nconnecting...\n");
 
     unsigned char *buffer = new unsigned char[BUFSIZE];
     // todo: Add failed connection handling
@@ -137,3 +137,4 @@ int main()
 
     while(true){};
 }
+*/

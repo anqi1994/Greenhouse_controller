@@ -6,8 +6,8 @@ add_executable(${ProjectName}
         blinker.cpp
         blinker.h
 
-#        ipstack/IPStack.cpp
-#        ipstack/IPStack.h
+        ipstack/IPStack.cpp
+        ipstack/IPStack.h
         ipstack/lwipopts.h
         ipstack/tls_common.c
         ipstack/picow_tls_client.c
@@ -40,7 +40,29 @@ add_executable(${ProjectName}
         display/screen_selection.cpp
         Fan.cpp
         Fan.h
-        
+
+        Fan/Produal.cpp
+        Fan/Produal.h
+        CO2_sensor/GMP252.cpp
+        CO2_sensor/GMP252.h
+        T_RH_sensor/HMP60.cpp
+        T_RH_sensor/HMP60.cpp
+        T_RH_sensor/HMP60.h
+        Structs.h
+        Structs.h
+        GPIO/GPIO.cpp
+        Valve/Valve.cpp
+        Valve/Valve.h
+        Task_Network/Network.cpp
+        Task_Network/Network.h
+        Task_UI/UI.cpp
+        Task_UI/UI.h
+        Task_Control/Control.cpp
+        Task_Control/Control.h
+        EEPROM/EEPROM.cpp
+        EEPROM/EEPROM.h
+        Pressure_sensor/SDP610.cpp
+        Pressure_sensor/SDP610.h
 )
 
 target_include_directories(${ProjectName} PRIVATE
