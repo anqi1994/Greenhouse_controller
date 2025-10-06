@@ -37,12 +37,21 @@ void Control::task_impl() {
     TickType_t last_valve_time = xTaskGetTickCount();
     bool valve_open = false;
 
+
     while(true) {
         //monitored data and message type are saved in structs.h
         Monitored_data data{};
         MessageType msg = MONITORED_DATA;
         Message message{};
         Message received;
+        char eeprom_buffer[STATUS_BUFF_SIZE];
+
+        if (eeprom.readStatus(CO2_SET_ADDR, eeprom_buffer, STATUS_BUFF_SIZE)) {
+            last_co2_set = atoi(eeprom_buffer);
+        }
+        if (last_co2_set != 0) {
+            printf("last_co2_set = %d\n", last_co2_set);
+        }
 
         //main CO2 control logic which is triggered by the timer for getting monitored data.
         if (xSemaphoreTake(timer_semphr, pdMS_TO_TICKS(10)) == pdTRUE) {
@@ -129,14 +138,17 @@ void Control::task_impl() {
         if(xQueueReceive(to_CO2, &received, 0) == pdTRUE){
             if(received.co2_set < max_co2){
                 co2_set = received.co2_set;
-                if (eeprom.eepromWrite(CO2_SET_ADDR, co2_set, STATUS_BUFF_SIZE))
+                snprintf(eeprom_buffer, sizeof(eeprom_buffer), "%u", co2_set);
+                if (eeprom.writeStatus(CO2_SET_ADDR, eeprom_buffer)) {
+                    printf("co2 set val written to EEPROM");
+                    eeprom.writeLog("co2 val changed");
+                }
                 printf("CONTROL co2: %u\n", received.co2_set);
             }else
             {
                 printf("co2 set is not in acceptable range.\n");
             }
         }
-
         eeprom.printAllLogs();
     }
 }

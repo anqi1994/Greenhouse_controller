@@ -42,6 +42,12 @@ private:
     QueueHandle_t to_Network;
     QueueHandle_t to_CO2;
     EventGroupHandle_t network_event_group;
+
+    // VALUES FROM EEPROM
+    uint last_co2_set;
+    char eeprom_buffer[STATUS_BUFF_SIZE];
+
+
 };
 
 #endif //CONTROL_H
