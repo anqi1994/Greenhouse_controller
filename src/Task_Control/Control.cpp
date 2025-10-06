@@ -115,8 +115,13 @@ void Control::task_impl() {
             // send data to queues from co2 control task
             xQueueSendToBack(to_UI, &message, portMAX_DELAY);
             //printf("QUEUE from co2 to UI\n");
-            xQueueSendToBack(to_Network, &message, portMAX_DELAY);
-            //printf("QUEUE from co2 to network\n");
+            EventBits_t bits = xEventGroupGetBits(network_event_group);
+
+            //only send information to network once it is connected to the cloud
+            if (bits & CLOUD_CONNECTED_BIT){
+                xQueueSendToBack(to_Network, &message, portMAX_DELAY);
+                //printf("QUEUE from co2 to network\n");
+            }
 
             // a minute at least between openings
             if(data.co2_val <= co2_set) {

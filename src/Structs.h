@@ -3,6 +3,8 @@
 //all the structs that are needed in this project.
 
 
+#define CLOUD_CONNECTED_BIT (1<<0)
+
 //monitored data gathered from the sensors
 struct Monitored_data{
     uint16_t co2_val;
@@ -19,8 +21,8 @@ enum MessageType{
 };
 
 struct NetworkConfig{
-    const char *ssid;
-    const char *password;
+    char ssid[32];
+    char password[64];
 };
 
 //combine message type and data

@@ -101,6 +101,7 @@ void UI::task_impl() {
                 }
             } else if (temp_received.type == CO2_SET_DATA) {
                 co2_set = temp_received.co2_set;
+                printf("co2_set from network to UI = %d\n", co2_set);
                 if (current_screen == WELCOME) {
                     screen_needs_update = true;
                 }
@@ -208,7 +209,12 @@ void UI::co2_screen(encoderEv ev) {
                 send.type = CO2_SET_DATA;
                 send.co2_set = co2_set;
                 printf("FROM UI:%u\n", send.co2_set);
-                xQueueSendToBack(to_Network, &send, portMAX_DELAY);
+                EventBits_t bits = xEventGroupGetBits(network_event_group);
+
+                //only send information to network once it is connected to the cloud
+                if (bits & CLOUD_CONNECTED_BIT){
+                    xQueueSendToBack(to_Network, &send, portMAX_DELAY);
+                }
                 xQueueSendToBack(to_CO2, &send, portMAX_DELAY);
             }
             change_screen(WELCOME);
@@ -288,8 +294,14 @@ void UI::text_entry_screen(encoderEv ev, std::string& input_str, uint max_len, s
                     printf("SSID ENTERED: %s\n", ssid_input.c_str());
                     printf("PASS ENTERED: %s\n", pass_input.c_str());
 
-                    send.network_config.password = pass_input.c_str();
-                    send.network_config.ssid = ssid_input.c_str();
+                    //send.network_config.password = pass_input.c_str();
+                    //send.network_config.ssid = ssid_input.c_str();
+
+                    strncpy(send.network_config.ssid, ssid_input.c_str(), sizeof(send.network_config.ssid) - 1);
+                    strncpy(send.network_config.password, pass_input.c_str(), sizeof(send.network_config.password) - 1);
+                    send.network_config.ssid[sizeof(send.network_config.ssid) - 1] = '\0';
+                    send.network_config.password[sizeof(send.network_config.password) - 1] = '\0';
+
                     xQueueSendToBack(to_Network, &send, portMAX_DELAY);
                     change_screen(WELCOME);
                 }

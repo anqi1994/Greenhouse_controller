@@ -319,7 +319,7 @@ int main() {
 
     xTimerStart(measure_timer, 0);
 
-    //Control control_task(measure_semaphore, to_UI,to_network,to_control,network_event_group);
+    Control control_task(measure_semaphore, to_UI,to_network,to_control,network_event_group);
     UI ui_task(to_control,to_network,to_UI,network_event_group);
     Network network_task(to_control,to_UI,to_network,network_event_group);
 

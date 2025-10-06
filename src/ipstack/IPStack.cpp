@@ -55,7 +55,15 @@ bool IPStack::connect_WiFi(const char* ssid, const char* password, int max_retri
 
 }
 
+//check if wifi connection is still on
 bool IPStack::WiFi_connected(){
+    int status = cyw43_tcpip_link_status(&cyw43_state, CYW43_ITF_STA);
+    if (status == CYW43_LINK_UP){
+        wifi_connected = true;
+    }else
+    {
+        wifi_connected = false;
+    }
     return wifi_connected;
 };
 
