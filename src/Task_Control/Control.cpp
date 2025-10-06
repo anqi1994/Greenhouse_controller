@@ -23,7 +23,6 @@ void Control::task_impl() {
     //auto i2cbus1 = std::make_shared<PicoI2C>(1, 100000); for pressure, but not used
     auto i2cbus0 = std::make_shared<PicoI2C>(0, 100000);
 
-
     // sensor objects
     //CO2Sensor co2(rtu_client, 240, false);
     GMP252 co2(rtu_client, 240);
@@ -36,19 +35,35 @@ void Control::task_impl() {
 
     // EEPROM extern memory
     eeprom = std::make_shared<EEPROM>(i2cbus0);
-    check_last_eeprom_data(&last_co2_set, &last_fan_speed);
-    if (last_fan_speed == 100) {
-        printf("SPEED WAS 100");
-        fan.setSpeed(last_fan_speed);
+    // check last eeprom data
+    rebooted = false;
+    check_last_eeprom_data(&last_co2_set, &last_fan_speed, &rebooted, wifi_ssid, wifi_pass);
+    printf("EEPROM SSID: %s\n", wifi_ssid);
+    printf("EEPROM PASS: %s\n", wifi_pass);
+    if (rebooted) {
+        printf("UNEXPECTED REBOOT\n");
+
+        if (last_fan_speed == 100) {
+            printf("SPEED WAS 100");
+            fan.setSpeed(last_fan_speed);
+        }
+        //also send last wifi credentials if rebooted
+        Message wifi_message;
+        wifi_message.type = NETWORK_CONFIG;
+        strcpy(wifi_message.network_config.ssid, wifi_ssid);
+        strcpy(wifi_message.network_config.password, wifi_pass);
+        xQueueSendToBack(to_Network, &wifi_message, portMAX_DELAY);
+        printf("Wifi details sent to network\n");
     }
+
     Message from_eeprom;
     from_eeprom.type = CO2_SET_DATA;
     from_eeprom.co2_set = last_co2_set;
     xQueueSendToBack(to_UI, &from_eeprom, portMAX_DELAY);
     printf("EEPROM CO2: %u\n", last_co2_set);
+    uint co2_set = last_co2_set;
 
-    //this is just for testing, co2_set needs to be retrieved from UI/network.
-    uint co2_set = 1500;
+
     TickType_t last_valve_time = xTaskGetTickCount();
     bool valve_open = false;
 
@@ -108,8 +123,8 @@ void Control::task_impl() {
             } else{
                 fan.setSpeed(0);
             }
-            snprintf(eeprom_buffer, sizeof(eeprom_buffer), "%u", fan.getSpeed());
-            eeprom->writeStatus(FAN_SPEED_ADDR, eeprom_buffer);
+            snprintf(status_buffer, sizeof(status_buffer), "%u", fan.getSpeed());
+            eeprom->writeStatus(FAN_SPEED_ADDR, status_buffer);
 
             message.data.fan_speed = fan.getSpeed();
             // send data to queues from co2 control task
@@ -150,20 +165,26 @@ void Control::task_impl() {
             }
         }
 
-        //get data from UI and network. data type received: only uint CO2 set level.
+        //get data from UI and network
         if(xQueueReceive(to_CO2, &received, 0) == pdTRUE){
-            if(received.co2_set < max_co2){
-                co2_set = received.co2_set;
-                snprintf(eeprom_buffer, sizeof(eeprom_buffer), "%u", co2_set);
-                if (eeprom->writeStatus(CO2_SET_ADDR, eeprom_buffer)) {
-                    printf("co2 set val written to EEPROM\n");
-                    eeprom->writeLog("co2 val changed");
+            if (received.type == CO2_SET_DATA) {
+                if(received.co2_set < max_co2){
+                    co2_set = received.co2_set;
+                    snprintf(status_buffer, sizeof(status_buffer), "%u", co2_set);
+                    if (eeprom->writeStatus(CO2_SET_ADDR, status_buffer)) {
+                        printf("co2 set val written to EEPROM\n");
+                        eeprom->writeLog("co2 val changed");
+                    }
+                    printf("CONTROL co2: %u\n", received.co2_set);
                 }
-                printf("CONTROL co2: %u\n", received.co2_set);
-            }else
-            {
-                printf("co2 set is not in acceptable range.\n");
+            } else if (received.type == NETWORK_CONFIG) {
+                strcpy(wifi_ssid, received.network_config.ssid);
+                eeprom->writeStatus(WIFI_SSID_ADDR, wifi_ssid);
+
+                strcpy(wifi_pass,received.network_config.password);
+                eeprom->writeStatus(WIFI_PASS_ADDR, wifi_pass);
             }
+
         }
 
         //eeprom.printAllLogs();
@@ -184,15 +205,36 @@ bool Control::check_fan(Produal &fan){
     return true; //fan is working
 }
 
-void Control::check_last_eeprom_data(uint16_t *last_co2_set, uint16_t *last_fan_speed/*bool *is_rebooted, */) {
+void Control::check_last_eeprom_data(uint16_t *last_co2_set, uint16_t *last_fan_speed, bool *rebooted,
+    char *wifi_ssid, char *wifi_pass) {
     // eeprom checking last saved data
-    eeprom->readStatus(CO2_SET_ADDR, eeprom_buffer, STATUS_BUFF_SIZE);
-    *last_co2_set = atoi(eeprom_buffer);
+    eeprom->readStatus(REBOOT_ADDR, status_buffer, STATUS_BUFF_SIZE);
+    //check if the system turned of while running
+    if (strcmp(status_buffer, RUN_FLAG) == 0) {
+        *rebooted = true;
+        eeprom->writeLog("Unexpected system shutdown");
+    } else if (strcmp(status_buffer, REBOOT_FLAG) == 0) {
+        *rebooted = false;
+        eeprom->writeLog("Normal system start");
+    } else {
+        //if first time or data corrupted
+        *rebooted = false;
+        eeprom->writeLog("First system start");
+    }
+    // mark system as running
+    eeprom->writeStatus(REBOOT_ADDR, RUN_FLAG);
 
-    /*if (last_co2_set != 0) {
-        printf("last_co2_set = %u\n", *last_co2_set);
-    }*/
-    eeprom->readStatus(FAN_SPEED_ADDR, eeprom_buffer, STATUS_BUFF_SIZE);
-    *last_fan_speed = atoi(eeprom_buffer);
+    eeprom->readStatus(CO2_SET_ADDR, status_buffer, STATUS_BUFF_SIZE);
+    *last_co2_set = atoi(status_buffer);
+
+    eeprom->readStatus(FAN_SPEED_ADDR, status_buffer, STATUS_BUFF_SIZE);
+    *last_fan_speed = atoi(status_buffer);
+    // read last saved wifi and pass
+    eeprom->readStatus(WIFI_SSID_ADDR, string_buffer, STR_BUFFER_SIZE);
+    strcpy(wifi_ssid, string_buffer);
+
+    eeprom->readStatus(WIFI_PASS_ADDR, string_buffer, STR_BUFFER_SIZE);
+    strcpy(wifi_pass, string_buffer);
+
 }
 

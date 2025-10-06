@@ -14,6 +14,9 @@
 #define STATUS_MSG_COUNT 5 // 5 addresses saved for status updates like co2_set val or reboot detect
 //addresses for specific status updates
 #define REBOOT_ADDR 0x00
+#define REBOOT_FLAG "REBOOT"
+#define RUN_FLAG "RUN"
+
 #define CO2_SET_ADDR (REBOOT_ADDR + STATUS_BUFF_SIZE)
 #define FAN_SPEED_ADDR (CO2_SET_ADDR + STATUS_BUFF_SIZE)
 

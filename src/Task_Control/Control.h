@@ -32,7 +32,8 @@ private:
     void task_impl();
     bool check_fan(Produal &fan);
     bool check_sensor_val(Monitored_data data);
-    void check_last_eeprom_data(uint16_t *last_co2_set, uint16_t *last_fan_speed /*bool *is_rebooted, uint *last_fan_speed*/);
+    void check_last_eeprom_data(uint16_t *last_co2_set, uint16_t *last_fan_speed, bool *rebooted,
+        char *wifi_ssid, char *wifi_pass);
 
     SemaphoreHandle_t timer_semphr;
     TaskHandle_t control_task;
@@ -46,10 +47,13 @@ private:
 
     // VALUES FROM EEPROM
     std::shared_ptr<EEPROM> eeprom;
-    char eeprom_buffer[STATUS_BUFF_SIZE];
+    char status_buffer[STATUS_BUFF_SIZE];
+    char string_buffer[STR_BUFFER_SIZE];
     uint16_t last_co2_set;
     uint16_t last_fan_speed;
-    bool is_rebooted;
+    bool rebooted;
+    char wifi_ssid[STR_BUFFER_SIZE];
+    char wifi_pass[STR_BUFFER_SIZE];
 
 
 };

@@ -21,7 +21,7 @@ enum MessageType{
 };
 
 struct NetworkConfig{
-    char ssid[32];
+    char ssid[64];
     char password[64];
 };
 
