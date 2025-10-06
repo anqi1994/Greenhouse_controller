@@ -40,6 +40,9 @@ private:
     QueueHandle_t to_UI;
     QueueHandle_t to_Network;
     QueueHandle_t to_CO2;
+
+    // VALUES FROM EEPROM
+    uint last_co2_set;
 };
 
 #endif //CONTROL_H
