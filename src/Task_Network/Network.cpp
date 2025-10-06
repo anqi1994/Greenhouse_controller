@@ -50,7 +50,7 @@ void Network::task_impl() {
     //Main logic to receive data from the queue, DO NOT DELETE! WE NEED IT.
     while (true) {
         //get data from CO2_control and UI. data type received: 1. monitored data. 2. uint CO2 set level.
-        if (xQueueReceive(to_Network, &received, portMAX_DELAY)) {
+        if (xQueueReceive(to_Network, &received, pdMS_TO_TICKS(10))) {
             //the received data is from CO2_control_task
             if(received.type == MONITORED_DATA){
                 printf("QUEUE to Network from CO2_control_task: co2: %d\n", received.data.co2_val);
@@ -59,9 +59,9 @@ void Network::task_impl() {
                 monitored_data.temperature = received.data.temperature;
                 monitored_data.humidity = received.data.humidity;
                 monitored_data.fan_speed = received.data.fan_speed;
-            }
+
             printf("trying to connect to http");
-            if(connect_to_http(ip_stack)){
+            /*if(connect_to_http(ip_stack)){
                 printf("goes here\n");
                 printf("Connected\n");
                 bool ok = upload_sensor_data(ip_stack,monitored_data);
@@ -73,28 +73,39 @@ void Network::task_impl() {
                 }
             }else{
                 printf("Connection failed\n");
+            }*/
+            bool ok = upload_sensor_data(ip_stack,monitored_data);
+            if(ok){
+                printf("Upload success.\n");
+            }else{
+                printf("Failed to upload.\n");
+            }
             }
 
-        }
-        //the received data is from UI task
-        else if(received.type == CO2_SET_DATA){
-            co2_set = received.co2_set;
-            // not sure if this is ok?
-            upload_co2_set_level(ip_stack, co2_set);
-            //printf("QUEUE to network from UI: co2_set: %d\n", co2_set);
+
+            //the received data is from UI task
+            else if(received.type == CO2_SET_DATA){
+                co2_set = received.co2_set;
+                // not sure if this is ok?
+                upload_co2_set_level(ip_stack, co2_set);
+                //printf("QUEUE to network from UI: co2_set: %d\n", co2_set);
+            }
         }
 
-        if(tested){
+
+        if(!tested){
             //queue to UI, it needs to send type, co2 set level.
             send.type = CO2_SET_DATA;
             send.co2_set = co2_set;
-            xQueueSendToBack(to_UI, &co2_set, portMAX_DELAY);
+            xQueueSendToBack(to_UI, &co2_set, pdMS_TO_TICKS(10));
             //printf("QUEUE from network from UI: co2_set: %d\n", co2_set);
             //queue to co2, it only needs to send uint co2 set value.
-            xQueueSendToBack(to_CO2, &co2_set, portMAX_DELAY);
+            xQueueSendToBack(to_CO2, &co2_set, pdMS_TO_TICKS(10));
             printf("QUEUE from network to co2: co2_set: %d\n", co2_set);
             tested = true;
         }
+
+        vTaskDelay(pdMS_TO_TICKS(20000));
 
         //test only once
         //if(!tested_upload){
@@ -103,14 +114,14 @@ void Network::task_impl() {
         //}
 
         //check every 15 from talkback queue
-        if (connect_to_http(ip_stack)) {
+        /*if (connect_to_http(ip_stack)) {
             uint co2_set = read_co2_set_level(ip_stack);
             if(co2_set>0){
                 upload_co2_set_level(ip_stack,co2_set);
             };
             disconnect_to_http(ip_stack);
             vTaskDelay(pdMS_TO_TICKS(15000));
-        }
+        }*/
 
     }
 
@@ -154,7 +165,7 @@ bool Network::connect_to_cloud(IPStack &ip_stack, const char* wifi_ssid, const c
     if(wifi_connected){
         if(connect_to_http(ip_stack)){
             http_connected = true;
-            disconnect_to_http(ip_stack);
+            //disconnect_to_http(ip_stack);
         }
     }
 
@@ -178,8 +189,9 @@ bool Network::upload_sensor_data(IPStack &ip_stack, Monitored_data &data){
             data.fan_speed,
             host);
 
-    ip_stack.write((unsigned char *)(req),strlen(req),1000);
-    auto rv = ip_stack.read((unsigned char*)buffer, BUFSIZE, 2000);
+    ip_stack.write((unsigned char *)(req),strlen(req));
+    vTaskDelay(pdMS_TO_TICKS(2000));
+    auto rv = ip_stack.read((unsigned char*)buffer, BUFSIZE, 100);
     if(rv <= 0){
         printf("No response from server\n");
         return false;
@@ -212,8 +224,9 @@ bool Network::upload_co2_set_level(IPStack &ip_stack, uint co2_set){
             co2_set,
             host);
 
-    ip_stack.write((unsigned char *)(req),strlen(req),1000);
-    auto rv = ip_stack.read((unsigned char*)buffer, BUFSIZE, 2000);
+    ip_stack.write((unsigned char *)(req),strlen(req));
+    vTaskDelay(pdMS_TO_TICKS(2000));
+    auto rv = ip_stack.read((unsigned char*)buffer, BUFSIZE, 100);
     if(rv <= 0){
         printf("No response from server\n");
         return false;
@@ -243,9 +256,10 @@ uint Network::read_co2_set_level(IPStack &ip_stack){
                       "\r\n"
                       "%s",strlen(talkback_api),talkback_api);
 
-    ip_stack.write((unsigned char *)(req),strlen(req),1000);
+    ip_stack.write((unsigned char *)(req),strlen(req));
+    vTaskDelay(pdMS_TO_TICKS(2000));
 
-    auto rv = ip_stack.read((unsigned char*)buffer, BUFSIZE, 2000);
+    auto rv = ip_stack.read((unsigned char*)buffer, BUFSIZE, 100);
     if(rv <= 0){
         printf("No response from server\n");
         //negative numbers or 0 for failed readings.

@@ -287,7 +287,7 @@ int IPStack::read(unsigned char *buffer, int len, int timeout) {
     return bytes_to_copy+first_copy;
 }
 
-int IPStack::write(unsigned char *buffer, int len, int timeout) {
+int IPStack::write(unsigned char *buffer, int len) {
     int rv = len;
     // cyw43_arch_lwip_begin/end should be used around calls into lwIP to ensure correct locking.
     // You can omit them if you are in a callback from lwIP. Note that when using pico_cyw_arch_poll

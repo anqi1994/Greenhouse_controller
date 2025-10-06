@@ -25,7 +25,7 @@ enum screens {
 class UI {
     public:
         UI(QueueHandle_t to_CO2, QueueHandle_t to_Network, QueueHandle_t to_UI,
-                uint32_t stack_size = 512, UBaseType_t priority = tskIDLE_PRIORITY + 1);
+                uint32_t stack_size = 2048, UBaseType_t priority = tskIDLE_PRIORITY + 1);
 
         static void task_wrap(void *pvParameters);
         // function for encoder irq enabled with callback

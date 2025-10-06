@@ -307,7 +307,7 @@ void timer_callback(TimerHandle_t xTimer) {
 int main() {
     stdio_init_all();
 
-    measure_timer = xTimerCreate("measure_timer", pdMS_TO_TICKS(15000), pdTRUE, nullptr, timer_callback);
+    measure_timer = xTimerCreate("measure_timer", pdMS_TO_TICKS(20000), pdTRUE, nullptr, timer_callback);
     measure_semaphore = xSemaphoreCreateBinary();
     to_control = xQueueCreate(10, sizeof(Message));
     to_UI = xQueueCreate(10, sizeof(Message));

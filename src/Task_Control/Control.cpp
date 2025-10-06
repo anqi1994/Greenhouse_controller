@@ -45,7 +45,7 @@ void Control::task_impl() {
         Message received;
 
         //main CO2 control logic which is triggered by the timer for getting monitored data.
-        if (xSemaphoreTake(timer_semphr, portMAX_DELAY) == pdTRUE) {
+        if (xSemaphoreTake(timer_semphr, pdMS_TO_TICKS(10)) == pdTRUE) {
             //getting monitored data from the sensors (GMP252- CO2, HMP60 -RH & TEM) -without Error checking
             data.co2_val = co2.read_value();
             printf("co2_val: %u\n", data.co2_val);
@@ -76,10 +76,7 @@ void Control::task_impl() {
             //vTaskDelay(pdMS_TO_TICKS(10));
             message.type = msg;
             message.data = data;
-            xQueueSendToBack(to_UI, &message, portMAX_DELAY);
-            //printf("QUEUE from co2 to UI\n");
-            xQueueSendToBack(to_Network, &message, portMAX_DELAY);
-            //printf("QUEUE from co2 to network\n");
+
 
             //main co2 level control logic
             if (data.co2_val >= max_co2) {
@@ -94,6 +91,14 @@ void Control::task_impl() {
             } else{
                 fan.setSpeed(0);
             }
+
+            message.data.fan_speed = fan.getSpeed();
+            // send data to queues from co2 control task
+            xQueueSendToBack(to_UI, &message, portMAX_DELAY);
+            //printf("QUEUE from co2 to UI\n");
+            xQueueSendToBack(to_Network, &message, portMAX_DELAY);
+            //printf("QUEUE from co2 to network\n");
+
             // a minute at least between openings
             if(data.co2_val <= co2_set) {
                 if (!valve_open) {
@@ -101,10 +106,10 @@ void Control::task_impl() {
                     printf("valve open\n");
 
                     //following is for real system,open the valve only for 0.5s!
-                    vTaskDelay(pdMS_TO_TICKS(500));
+                    //vTaskDelay(pdMS_TO_TICKS(500));
 
                     //following is for test system!!!!! valve opens for 5s to make sure CO2 level goes up.
-                    //vTaskDelay(pdMS_TO_TICKS(5000));
+                    vTaskDelay(pdMS_TO_TICKS(5000));
                     valve.close();
                     valve_open = true;
                     last_valve_time = xTaskGetTickCount();
