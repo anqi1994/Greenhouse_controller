@@ -5,11 +5,12 @@
 #include "../../FreeRTOS-KernelV10.6.2/include/task.h"
 #include "../ipstack/IPStack.h"
 #include "../Structs.h"
+#include <event_groups.h>
 
 
 class Network {
 public:
-    Network(QueueHandle_t to_CO2, QueueHandle_t to_UI, QueueHandle_t to_Network, uint32_t stack_size = 2048, UBaseType_t priority = tskIDLE_PRIORITY + 2);
+    Network(QueueHandle_t to_CO2, QueueHandle_t to_UI, QueueHandle_t to_Network, EventGroupHandle_t network_event_group, uint32_t stack_size = 2048, UBaseType_t priority = tskIDLE_PRIORITY + 2);
     static void task_wrap(void *pvParameters);
     char* extract_thingspeak_http_body();
 
@@ -36,6 +37,8 @@ private:
     const char *wifipass = "12341234";
     bool wifi_connected = false;
     bool http_connected = false;
+    EventGroupHandle_t network_event_group;
+
 };
 
 #endif //QUEUETEST_H

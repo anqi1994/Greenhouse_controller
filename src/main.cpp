@@ -11,6 +11,7 @@
 #include "ssd1306.h"
 #include "modbus/ModbusClient.h"
 #include "Structs.h"
+#include <event_groups.h>
 
 #include "Task_Network/Network.h"
 #include "Task_Control/Control.h"
@@ -299,6 +300,7 @@ SemaphoreHandle_t measure_semaphore;
 QueueHandle_t to_control;
 QueueHandle_t to_UI;
 QueueHandle_t to_network;
+EventGroupHandle_t network_event_group;
 
 void timer_callback(TimerHandle_t xTimer) {
     xSemaphoreGive(measure_semaphore);
@@ -306,6 +308,8 @@ void timer_callback(TimerHandle_t xTimer) {
 
 int main() {
     stdio_init_all();
+
+    network_event_group = xEventGroupCreate();
 
     measure_timer = xTimerCreate("measure_timer", pdMS_TO_TICKS(20000), pdTRUE, nullptr, timer_callback);
     measure_semaphore = xSemaphoreCreateBinary();
@@ -315,9 +319,9 @@ int main() {
 
     xTimerStart(measure_timer, 0);
 
-    Control control_task(measure_semaphore, to_UI,to_network,to_control);
-    UI ui_task(to_control,to_network,to_UI);
-    Network network_task(to_control,to_UI,to_network);
+    Control control_task(measure_semaphore, to_UI,to_network,to_control,network_event_group);
+    UI ui_task(to_control,to_network,to_UI,network_event_group);
+    Network network_task(to_control,to_UI,to_network,network_event_group);
 
     vTaskStartScheduler();
 

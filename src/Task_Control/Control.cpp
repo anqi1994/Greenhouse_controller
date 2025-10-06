@@ -1,8 +1,8 @@
 #include "Control.h"
 
 
-Control::Control(SemaphoreHandle_t timer, QueueHandle_t to_UI, QueueHandle_t to_Network, QueueHandle_t to_CO2,uint32_t stack_size, UBaseType_t priority) :
-    timer_semphr(timer), to_UI(to_UI), to_Network(to_Network) ,to_CO2 (to_CO2){
+Control::Control(SemaphoreHandle_t timer, QueueHandle_t to_UI, QueueHandle_t to_Network, QueueHandle_t to_CO2,EventGroupHandle_t network_event_group,uint32_t stack_size, UBaseType_t priority) :
+    timer_semphr(timer), to_UI(to_UI), to_Network(to_Network) ,to_CO2 (to_CO2),network_event_group(network_event_group){
 
     xTaskCreate(task_wrap, name, stack_size, this, priority, nullptr);
 }
