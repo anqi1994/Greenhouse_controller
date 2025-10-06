@@ -42,6 +42,7 @@ private:
     QueueHandle_t to_CO2;
 
     // VALUES FROM EEPROM
+    char eeprom_buffer[STATUS_BUFF_SIZE];
     uint last_co2_set;
 };
 
