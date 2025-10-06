@@ -51,7 +51,7 @@ void Network::task_impl() {
             else if(received.type == CO2_SET_DATA){
                 //save the co2 set level from the UI task
                 co2_set = received.co2_set;
-                initial_data_ready = true;
+                //initial_data_ready = true;
                 //upload_co2_set_level(ip_stack, co2_set);
                 //upload_sensor_data(ip_stack,monitored_data);
                 //printf("QUEUE to network from UI: co2_set: %d\n", co2_set);
@@ -82,6 +82,7 @@ void Network::task_impl() {
                     send_msg.co2_set = tem;
                     printf("co2_set value from network class: %u",tem);
                     //sending co2 set level from network to both UI and CO2 queue
+                    //todo: need to update eeprom in control class
                     xQueueSendToBack(to_UI, &send_msg, pdMS_TO_TICKS(10));
                     xQueueSendToBack(to_CO2, &send_msg, pdMS_TO_TICKS(10));
                 }
