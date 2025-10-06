@@ -86,7 +86,7 @@ void UI::task_impl() {
     display = std::make_unique<ssd1306os>(i2cbus1);
 
     //this is just for testing
-    co2_set = 1200;
+    co2_set = 0;
     //bool tested = true;
 
     while (true) {

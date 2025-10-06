@@ -32,6 +32,7 @@ private:
     void task_impl();
     bool check_fan(Produal &fan);
     bool check_sensor_val(Monitored_data data);
+    void check_last_eeprom_data(uint16_t *last_co2_set, uint16_t *last_fan_speed /*bool *is_rebooted, uint *last_fan_speed*/);
 
     SemaphoreHandle_t timer_semphr;
     TaskHandle_t control_task;
@@ -42,6 +43,15 @@ private:
     QueueHandle_t to_Network;
     QueueHandle_t to_CO2;
     EventGroupHandle_t network_event_group;
+
+    // VALUES FROM EEPROM
+    std::shared_ptr<EEPROM> eeprom;
+    char eeprom_buffer[STATUS_BUFF_SIZE];
+    uint16_t last_co2_set;
+    uint16_t last_fan_speed;
+    bool is_rebooted;
+
+
 };
 
 #endif //CONTROL_H
