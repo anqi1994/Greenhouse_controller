@@ -283,8 +283,14 @@ void UI::text_entry_screen(encoderEv ev, std::string& input_str, uint max_len, s
                     reset_text_entry();
                     pass_input.clear();
                 } else {
+                    Message send{};
+                    send.type = NETWORK_CONFIG;
                     printf("SSID ENTERED: %s\n", ssid_input.c_str());
                     printf("PASS ENTERED: %s\n", pass_input.c_str());
+
+                    send.network_config.password = pass_input.c_str();
+                    send.network_config.ssid = ssid_input.c_str();
+                    xQueueSendToBack(to_Network, &send, portMAX_DELAY);
                     change_screen(WELCOME);
                 }
             }

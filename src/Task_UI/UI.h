@@ -7,6 +7,7 @@
 #include "ssd1306os.h"
 #include "Structs.h"
 #include <event_groups.h>
+#include <cstring>
 
 enum encoderEv {
     ROT_L,

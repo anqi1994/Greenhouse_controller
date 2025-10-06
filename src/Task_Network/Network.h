@@ -33,8 +33,9 @@ private:
     const char *read_api = "9L9GPCBA6QG1ZC14";
     static const int BUFSIZE = 2048;
     char buffer[BUFSIZE];
-    const char *wifissid = "Julijaiph";
-    const char *wifipass = "12341234";
+    const char *wifissid;
+    const char *wifipass;
+
     bool wifi_connected = false;
     bool http_connected = false;
     EventGroupHandle_t network_event_group;
