@@ -42,12 +42,14 @@ static void ui_feeder_task(void* arg) {
         xQueueSendToBack(to_UI, &m, portMAX_DELAY);
 
         // 2) Every ~5 s, send a setpoint update as if from Network -> UI
+        /*
         if ((tick % 5) == 4) {
             Message s{};
             s.type    = CO2_SET_DATA;
             s.co2_set = 1200 + ((tick / 5) % 4) * 100; // 1200,1300,1400,1500...
             xQueueSendToBack(to_UI, &s, portMAX_DELAY);
         }
+        */
 
         tick++;
         vTaskDelay(pdMS_TO_TICKS(1000));

@@ -14,7 +14,13 @@ struct Monitored_data{
 //define the two types of messages to be sent to different queues
 enum MessageType{
     MONITORED_DATA,
-    CO2_SET_DATA
+    CO2_SET_DATA,
+    NETWORK_CONFIG
+};
+
+struct NetworkConfig {
+    const char *ssid;
+    const char *password;
 };
 
 //combine message type and data
@@ -23,6 +29,8 @@ struct Message{
 
     Monitored_data data;
     uint co2_set;
+
+    NetworkConfig network_config;
 };
 
 #endif //STRUCTS_H

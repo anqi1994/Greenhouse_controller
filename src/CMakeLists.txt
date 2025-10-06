@@ -48,6 +48,8 @@ add_executable(${ProjectName}
         Structs.h
         GPIO/GPIO.cpp
         GPIO/GPIO.h
+        test/UI.cpp
+        test/UI.h
 )
 
 target_include_directories(${ProjectName} PRIVATE

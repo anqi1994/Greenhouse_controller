@@ -101,4 +101,26 @@ private:
     // ===== Setpoint constraints =====
     static constexpr int kMinSetpoint = 400;
     static constexpr int kMaxSetpoint = 2000;
+
+    bool wifi_editing_{false};      // false: NAV, true: EDIT
+    int  wifi_field_index_{0};      // 0=SSID, 1=PASS
+    int  ascii_idx_{0};             // index in the selectable char set
+
+    bool wifi_just_exited_edit_{false};
+
+    // Cursor/geometry for ascii preview
+    static constexpr int kCharW      = 8;    // glyph width
+    static constexpr int kSSID_X0    = 44;   // text start X for SSID
+    static constexpr int kPASS_X0    = 44;   // text start X for PASS
+    static constexpr int kSSID_Y     = 20;   // baseline Y for SSID line
+    static constexpr int kPASS_Y     = 35;   // baseline Y for PASS line
+    static constexpr int kSSID_MAX   = 31;   // max visible chars
+    static constexpr int kPASS_MAX   = 31;
+
+    static constexpr const char* kCharSet =
+        " ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+        "abcdefghijklmnopqrstuvwxyz"
+        "0123456789"
+        "._-@";
+
 };

@@ -20,10 +20,10 @@ public:
     void welcome() {
         ssd_->fill(0);
         ssd_->text("GROUP 07", 28, 5);
-        ssd_->text("Carol", 42, 22);
-        ssd_->text("Julija", 38, 34);
-        ssd_->text("Linh", 46, 46);
-        ssd_->text("Qi", 54, 58);
+        ssd_->text("Carol", 42, 20);
+        ssd_->text("Julija", 38, 32);
+        ssd_->text("Linh", 46, 44);
+        ssd_->text("Qi", 54, 56);
         ssd_->show();
     }
 
@@ -173,6 +173,7 @@ void UI::handleEncoderCallback(uint gpio, uint32_t events) {
     }
 
     // 2) Encoder's own push button SW (optional confirm)
+
     if ((gpio == (uint)sw_) && (events & GPIO_IRQ_EDGE_FALL)) {
         if ((now_ticks - last_sw_time_) >= pdMS_TO_TICKS(250)) {
             ev = SW;
@@ -180,6 +181,7 @@ void UI::handleEncoderCallback(uint gpio, uint32_t events) {
             last_sw_time_ = now_ticks;
         }
     }
+
 
     // 3) Separate OK button (GPIO5)
     if ((gpio == (uint)ok_) && (events & GPIO_IRQ_EDGE_FALL)) {
@@ -230,7 +232,7 @@ void UI::task_impl() {
 
     // Boot: show welcome screen for ~2 seconds or until user action
     screen.welcome();
-    TickType_t welcome_deadline = xTaskGetTickCount() + pdMS_TO_TICKS(2000);
+    TickType_t welcome_deadline = xTaskGetTickCount() + pdMS_TO_TICKS(5000);
 
     for (;;) {
         // 1) Drain messages from to_UI_ (Control monitored data + Network setpoint)
@@ -327,30 +329,122 @@ void UI::task_impl() {
                         setpoint_edit_ = (setpoint_edit_ > kMinSetpoint) ? (setpoint_edit_ - 10) : kMinSetpoint;
                         screen.co2Set(setpoint_edit_);
                     } else if (ev == OK_BTN || ev == SW) {
-                        // Confirm: update local and broadcast to Control + Network
+                        // 1) apply
                         setpoint_ = setpoint_edit_;
+                        // 2) broadcast to Control + Network
                         send_setpoint((uint32_t)setpoint_);
-                        screen.co2Set(setpoint_edit_);
+                        // 3) debug log (optional)
+                        printf("UI: CO2 setpoint saved = %d ppm\n", setpoint_);
+                        // 4) return to main menu
+                        state = State::MAIN_MENU;
+                        menu_index_ = 1;
+                        screen.mainMenu(menu_index_);
                     } else if (ev == BACK_BTN) {
+                        // discard and return
                         state = State::MAIN_MENU;
                         screen.mainMenu(menu_index_);
                     }
                 } break;
+               case State::WIFI_CONFIG: {
+    // Character set
+    const int charset_len = (int)std::strlen(UI::kCharSet);
 
-                case State::WIFI_CONFIG: {
-                    // Simple two-item behavior demo: 0=SSID field, 1=PASS field
-                    if (ev == ROT_L || ev == ROT_R) {
-                        // Toggle between SSID and PASS
-                        wifi_menu_index_ ^= 1;
-                        screen.wifiConfig(wifi_menu_index_, ssid_, pass_);
-                    } else if (ev == OK_BTN || ev == SW) {
-                        // Placeholder: here you can enter an editing sub-state if needed
-                        screen.wifiConfig(wifi_menu_index_, ssid_, pass_);
-                    } else if (ev == BACK_BTN) {
-                        state = State::MAIN_MENU;
-                        screen.mainMenu(menu_index_);
-                    }
-                } break;
+    // Select active buffer (SSID or PASS) and its geometry
+    auto* active_buf = (wifi_field_index_ == 0) ? ssid_ : pass_;
+    const int max_len = (wifi_field_index_ == 0) ? kSSID_MAX : kPASS_MAX;
+    const int base_x  = (wifi_field_index_ == 0) ? kSSID_X0  : kPASS_X0;
+    const int base_y  = (wifi_field_index_ == 0) ? kSSID_Y   : kPASS_Y;
+
+    if (!wifi_editing_) {
+        // ===================== NAVIGATION MODE =====================
+        if (ev == ROT_L || ev == ROT_R) {
+            // Rotate toggles between SSID and PASSWORD
+            wifi_field_index_ ^= 1; // 0 <-> 1
+            screen.wifiConfig(wifi_field_index_, ssid_, pass_);
+        }
+        else if (ev == SW) {
+            // ENTER EDIT MODE by encoder press; clear current field immediately
+            wifi_editing_ = true;
+            wifi_just_exited_edit_ = false; // entering edit, clear finalize latch
+            ascii_idx_    = 0;
+
+            // Clear selected field
+            active_buf[0] = '\0';
+
+            // Redraw field and show first candidate char at position 0
+            int cur_len = 0;
+            int x = base_x + cur_len * kCharW;
+            screen.wifiConfig(wifi_field_index_, ssid_, pass_);
+            screen.asciiCharSelection(x, UI::kCharSet[ascii_idx_], base_y);
+        }
+        else if (ev == OK_BTN) {
+            // If just exited edit previously, this OK finalizes whole Wi-Fi config
+            if (wifi_just_exited_edit_) {
+                wifi_just_exited_edit_ = false;
+                // TODO: 如需下发 SSID/PASS 到 Network/EEPROM，这里发送消息（需扩展 structs.h）
+                printf("UI: Wi-Fi config finished. SSID=\"%s\" PASS=\"%s\"\n", ssid_, pass_);
+                state = State::MAIN_MENU;
+                screen.mainMenu(menu_index_);
+            } else {
+                // No-op: first OK in pure NAV does nothing by spec
+            }
+        }
+        else if (ev == BACK_BTN) {
+            // Cancel and return to main menu
+            state = State::MAIN_MENU;
+            screen.mainMenu(menu_index_);
+        }
+    } else {
+        // ===================== EDIT MODE =====================
+        if (ev == ROT_L) {
+            // Next character
+            ascii_idx_ = (ascii_idx_ + 1) % charset_len;
+            int cur_len = (int)std::strlen(active_buf);
+            int x = base_x + cur_len * kCharW;
+            screen.asciiCharSelection(x, UI::kCharSet[ascii_idx_], base_y);
+        }
+        else if (ev == ROT_R) {
+            // Previous character
+            ascii_idx_ = (ascii_idx_ - 1 + charset_len) % charset_len;
+            int cur_len = (int)std::strlen(active_buf);
+            int x = base_x + cur_len * kCharW;
+            screen.asciiCharSelection(x, UI::kCharSet[ascii_idx_], base_y);
+        }
+        else if (ev == SW) {
+            // Append current char to field
+            int cur_len = (int)std::strlen(active_buf);
+            if (cur_len < max_len) {
+                char ch = UI::kCharSet[ascii_idx_];
+                active_buf[cur_len]   = ch;
+                active_buf[cur_len+1] = '\0';
+            }
+            int new_len = (int)std::strlen(active_buf);
+            int x = base_x + new_len * kCharW;
+            screen.wifiConfig(wifi_field_index_, ssid_, pass_);
+            screen.asciiCharSelection(x, UI::kCharSet[ascii_idx_], base_y);
+        }
+        else if (ev == BACK_BTN) {
+            // Delete last character
+            int cur_len = (int)std::strlen(active_buf);
+            if (cur_len > 0) {
+                active_buf[cur_len-1] = '\0';
+                cur_len--;
+            }
+            int x = base_x + cur_len * kCharW;
+            screen.wifiConfig(wifi_field_index_, ssid_, pass_);
+            screen.asciiCharSelection(x, UI::kCharSet[ascii_idx_], base_y);
+        }
+        else if (ev == OK_BTN) {
+            // Exit edit mode; next OK in NAV will finalize
+            wifi_editing_ = false;
+            wifi_just_exited_edit_ = true;  // arm one-shot finalize
+            screen.wifiConfig(wifi_field_index_, ssid_, pass_);
+        }
+    }
+} break;
+
+
+
             } // switch(state)
         }     // if event
 
