@@ -44,6 +44,7 @@ private:
     EventGroupHandle_t network_event_group;
 
     // VALUES FROM EEPROM
+    char eeprom_buffer[STATUS_BUFF_SIZE];
     uint last_co2_set;
     char eeprom_buffer[STATUS_BUFF_SIZE];
 

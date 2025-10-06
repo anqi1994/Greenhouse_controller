@@ -37,6 +37,12 @@ void Control::task_impl() {
     TickType_t last_valve_time = xTaskGetTickCount();
     bool valve_open = false;
 
+    if (eeprom.readStatus(CO2_SET_ADDR, eeprom_buffer, STATUS_BUFF_SIZE)) {
+        last_co2_set = atoi(eeprom_buffer);
+    }
+    if (last_co2_set != 0) {
+        printf("last_co2_set = %d\n", last_co2_set);
+    }
 
     while(true) {
         //monitored data and message type are saved in structs.h
@@ -44,17 +50,11 @@ void Control::task_impl() {
         MessageType msg = MONITORED_DATA;
         Message message{};
         Message received;
-        char eeprom_buffer[STATUS_BUFF_SIZE];
 
-        if (eeprom.readStatus(CO2_SET_ADDR, eeprom_buffer, STATUS_BUFF_SIZE)) {
-            last_co2_set = atoi(eeprom_buffer);
-        }
-        if (last_co2_set != 0) {
-            printf("last_co2_set = %d\n", last_co2_set);
-        }
 
         //main CO2 control logic which is triggered by the timer for getting monitored data.
         if (xSemaphoreTake(timer_semphr, pdMS_TO_TICKS(10)) == pdTRUE) {
+            eeprom.printAllLogs();
             //getting monitored data from the sensors (GMP252- CO2, HMP60 -RH & TEM) -without Error checking
             data.co2_val = co2.read_value();
             printf("co2_val: %u\n", data.co2_val);
@@ -149,7 +149,6 @@ void Control::task_impl() {
                 printf("co2 set is not in acceptable range.\n");
             }
         }
-        eeprom.printAllLogs();
     }
 }
 
