@@ -1,5 +1,7 @@
 #include "Control.h"
 
+//todo: maybe use a state machine for cleaner task_impl?
+//todo: could be a function for sending initial eeprom
 
 Control::Control(SemaphoreHandle_t timer,
     QueueHandle_t to_UI, QueueHandle_t to_Network, QueueHandle_t to_CO2,
@@ -27,7 +29,7 @@ void Control::task_impl() {
     //CO2Sensor co2(rtu_client, 240, false);
     GMP252 co2(rtu_client, 240);
     HMP60 tem_hum_sensor(rtu_client,241);
-    //SDP610 pressure_sensor(i2cbus0);
+    //SDP610 pressure_sensor(i2cbus0); // done but not used here
 
     //actuators: valve and fan
     Valve valve(27);
@@ -127,18 +129,8 @@ void Control::task_impl() {
 
 
             //main co2 level control logic
-            if (data.co2_val >= max_co2) {
-                //set the fan to 100% when it reaches max_co2
-                fan.setSpeed(100);
-                vTaskDelay(pdMS_TO_TICKS(10));
-                if(!check_fan(fan)){
-                    //fan is not working
-                    printf("fan failed\n");
-                    fan_working = false;
-                }
-            } else{
-                fan.setSpeed(0);
-            }
+            handle_fan_control(fan, data.co2_val, max_co2);
+
             snprintf(status_buffer, sizeof(status_buffer), "%u", fan.getSpeed());
             eeprom->writeStatus(FAN_SPEED_ADDR, status_buffer);
 
@@ -206,6 +198,19 @@ void Control::task_impl() {
     }
 }
 
+void Control::handle_fan_control(Produal &fan, uint16_t co2_level, uint16_t max_co2) {
+    if (co2_level >= max_co2) {
+        fan.setSpeed(max_fan_speed);
+        vTaskDelay(pdMS_TO_TICKS(10));
+
+        if(!check_fan(fan)) {
+            eeprom->writeLog("Fan failed");
+        }
+    } else {
+        fan.setSpeed(0);
+    }
+}
+
 //check if fan is running after two reads
 bool Control::check_fan(Produal &fan){
     int first = fan.returnPulse();
@@ -253,6 +258,7 @@ void Control::check_last_eeprom_data(uint16_t *last_co2_set, uint16_t *last_fan_
 
     eeprom->readStatus(WIFI_PASS_ADDR, string_buffer, STR_BUFFER_SIZE, STR_BUFFER_SIZE);
     strcpy(wifi_pass, string_buffer);
-
 }
+
+
 

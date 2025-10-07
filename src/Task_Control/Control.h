@@ -31,15 +31,17 @@ private:
     // Private functions
     void task_impl();
     bool check_fan(Produal &fan);
-    bool check_sensor_val(Monitored_data data);
+    void handle_fan_control(Produal &fan, uint16_t co2_level, uint16_t max_co2);
+    //bool check_sensor_val(Monitored_data data);
     void check_last_eeprom_data(uint16_t *last_co2_set, uint16_t *last_fan_speed, bool *rebooted,
         char *wifi_ssid, char *wifi_pass);
 
     SemaphoreHandle_t timer_semphr;
     TaskHandle_t control_task;
     const char *name = "CONTROL";
-    uint max_co2 = 2000;
+    uint16_t max_co2 = 2000;
     bool fan_working = true;
+    uint16_t max_fan_speed = 100;
     QueueHandle_t to_UI;
     QueueHandle_t to_Network;
     QueueHandle_t to_CO2;
