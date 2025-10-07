@@ -23,8 +23,6 @@ void Network::task_impl() {
     Message received{};
     Message send{};
 
-    //todo: this is a safe co2 set value but we need to get it from eeprom
-    uint co2_set = 1000;
     Monitored_data monitored_data{};
     IPStack ip_stack;
     bool initial_data_ready = false;
@@ -58,31 +56,46 @@ void Network::task_impl() {
             }
 
             //the received data is from UI task or Control task (after reboot when eeprom has the information saved)
-            else if(received.type == NETWORK_CONFIG){
+            else if(received.type == NETWORK_CONFIG) {
                 wifissid= received.network_config.ssid;
                 wifipass= received.network_config.password;
-                printf("received ssid: %s, password: %s",wifissid,wifipass);
-                if(connect_to_cloud(ip_stack,wifissid,wifipass)){
-                    //if cloud is connected, then set the network event group bit as 1
-                    xEventGroupSetBits(network_event_group,CLOUD_CONNECTED_BIT);
-                    //clear the talkback queue from previously saved data.
-                    while(read_co2_set_level(ip_stack)) vTaskDelay(pdMS_TO_TICKS(10));
-                };
+                printf("received ssid: %s, password: %s\n",wifissid,wifipass);
             }
         }
 
         EventBits_t bits = xEventGroupGetBits(network_event_group);
+        if (bits & RECONNECT_WIFI_BIT) {
+            printf("RECONNECT WIFI\n");
+
+            if (bits & CLOUD_CONNECTED_BIT) {
+                printf("WIFI DISCONNECTING\n");
+                ip_stack.disconnect();
+                ip_stack.disconnect_WiFi();
+                xEventGroupClearBits(network_event_group, CLOUD_CONNECTED_BIT);
+                vTaskDelay(pdMS_TO_TICKS(2000));
+            }
+
+            if(connect_to_cloud(ip_stack,wifissid,wifipass)){
+                //if cloud is connected, then set the network event group bit as 1
+                xEventGroupSetBits(network_event_group,CLOUD_CONNECTED_BIT);
+                //clear the talkback queue from previously saved data.
+                while(read_co2_set_level(ip_stack)) vTaskDelay(pdMS_TO_TICKS(10));
+            }
+
+            xEventGroupClearBits(network_event_group, RECONNECT_WIFI_BIT);
+        }
+
+        bits = xEventGroupGetBits(network_event_group);
         if (bits & CLOUD_CONNECTED_BIT && initial_data_ready) {
             if(ip_stack.WiFi_connected()){
                 //retrieve co2 set level from talkback queue if there is any
                 Message send_msg{};
                 send_msg.type = CO2_SET_DATA;
                 uint tem = read_co2_set_level(ip_stack);
-                if( 500 < tem && tem  < 2000){
+                if( MIN_CO2_SET < tem && tem <= MAX_CO2_SET){
                     send_msg.co2_set = tem;
                     printf("co2_set value from network class: %u",tem);
                     //sending co2 set level from network to both UI and CO2 queue
-                    //todo: need to update eeprom in control class
                     xQueueSendToBack(to_UI, &send_msg, pdMS_TO_TICKS(10));
                     xQueueSendToBack(to_CO2, &send_msg, pdMS_TO_TICKS(10));
                 }
@@ -102,8 +115,7 @@ void Network::task_impl() {
             }
         }
     }
-
-    }
+}
 
 
 //connect to thingspeak service via http

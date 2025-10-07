@@ -10,21 +10,22 @@
 #define EEPROM_ADDRESS 0x50
 #define STATUS_BUFF_SIZE 8 // for status updates
 #define STR_BUFFER_SIZE 64 //for log messages
+#define STATUS_MSG_COUNT 3
 
-#define STATUS_MSG_COUNT 5 // 5 addresses saved for status updates like co2_set val or reboot detect
+ // 5 addresses saved for status updates like co2_set val or reboot detect
 //addresses for specific status updates
 #define REBOOT_ADDR 0x00
 #define REBOOT_FLAG "REBOOT"
 #define RUN_FLAG "RUN"
 
-#define CO2_SET_ADDR (REBOOT_ADDR + STATUS_BUFF_SIZE)
-#define FAN_SPEED_ADDR (CO2_SET_ADDR + STATUS_BUFF_SIZE)
+#define CO2_SET_ADDR 0x08
+#define FAN_SPEED_ADDR 0x10
 
 #define LOG_COUNT 10 // max log messages until log entries are deleted
 
 //address for saving wifi credentials
-#define WIFI_SSID_ADDR (STATUS_MSG_COUNT * STATUS_BUFF_SIZE)
-#define WIFI_PASS_ADDR (WIFI_SSID_ADDR + STR_BUFFER_SIZE)
+#define WIFI_SSID_ADDR 0x40
+#define WIFI_PASS_ADDR 0x80
 
 #define MIN_LOG_ADDR (WIFI_PASS_ADDR + STR_BUFFER_SIZE)
 #define MAX_LOG_ADDRESS (MIN_LOG_ADDR + (LOG_COUNT - 1) * STR_BUFFER_SIZE)
@@ -35,9 +36,9 @@ public:
     EEPROM(std::shared_ptr<PicoI2C> i2cbus, uint8_t address = EEPROM_ADDRESS);
 
     // single status updates
-    bool writeStatus(uint16_t address, const char *status);
-    bool readStatus(uint16_t address, char *status_buffer, size_t buffer_len);
-    bool readStatus(uint16_t address, std::string &status_buffer);
+    bool writeStatus(uint16_t address, const char *status, size_t max_len = STATUS_BUFF_SIZE);
+    bool readStatus(uint16_t address, char *status_buffer, size_t buffer_len, size_t max_len = STATUS_BUFF_SIZE);
+    bool readStatus(uint16_t address, std::string &status_buffer, size_t max_len = STATUS_BUFF_SIZE);
 
     // functions for logging
     bool writeLog(const char *message);

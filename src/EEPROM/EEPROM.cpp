@@ -55,14 +55,14 @@ bool EEPROM::eepromRead(uint16_t address, uint8_t *data, size_t data_len) {
 }
 
 // writing status to specific address
-bool EEPROM::writeStatus(const uint16_t address, const char *status) {
+bool EEPROM::writeStatus(const uint16_t address, const char *status, size_t max_len) {
     size_t len = strlen(status);
 
-    if (len > STATUS_BUFF_SIZE - 3) {
-        len = STATUS_BUFF_SIZE - 3;
+    if (len > max_len - 3) {
+        len = max_len - 3;
     }
 
-    std::vector<uint8_t> log_message_buff(STATUS_BUFF_SIZE, 0);
+    std::vector<uint8_t> log_message_buff(max_len, 0);
     std::memcpy(log_message_buff.data(), status, len);
     log_message_buff[len] = '\0';
 
@@ -70,18 +70,18 @@ bool EEPROM::writeStatus(const uint16_t address, const char *status) {
     log_message_buff[len + 1] = static_cast<uint8_t>(crc >> 8);
     log_message_buff[len + 2] = static_cast<uint8_t>(crc & 0xFF);
 
-    return eepromWrite(address, log_message_buff.data(), STATUS_BUFF_SIZE);
+    return eepromWrite(address, log_message_buff.data(), max_len);
 }
 
-bool EEPROM::readStatus(uint16_t address, char *status_buffer, size_t buffer_len) {
-    std::vector<uint8_t> read_buffer(STATUS_BUFF_SIZE);
+bool EEPROM::readStatus(uint16_t address, char *status_buffer, size_t buffer_len, size_t max_len) {
+    std::vector<uint8_t> read_buffer(max_len);
 
-    if (!eepromRead(address, read_buffer.data(), STATUS_BUFF_SIZE)) {
+    if (!eepromRead(address, read_buffer.data(), max_len)) {
         return false;
     }
 
     size_t message_len = 0;
-    while (message_len < STATUS_BUFF_SIZE && read_buffer[message_len] != '\0') {
+    while (message_len < max_len && read_buffer[message_len] != '\0') {
         message_len++;
     }
 
@@ -98,15 +98,15 @@ bool EEPROM::readStatus(uint16_t address, char *status_buffer, size_t buffer_len
 }
 
 // overload for std::string
-bool EEPROM::readStatus(uint16_t address, std::string &status_buffer) {
-    std::vector<uint8_t> read_buffer(STATUS_BUFF_SIZE);
+bool EEPROM::readStatus(uint16_t address, std::string &status_buffer, size_t max_len) {
+    std::vector<uint8_t> read_buffer(max_len);
 
-    if (!eepromRead(address, read_buffer.data(), STATUS_BUFF_SIZE)) {
+    if (!eepromRead(address, read_buffer.data(), max_len)) {
         return false;
     }
 
     size_t message_len = 0;
-    while (message_len < STATUS_BUFF_SIZE && read_buffer[message_len] != '\0') {
+    while (message_len < max_len && read_buffer[message_len] != '\0') {
         message_len++;
     }
 

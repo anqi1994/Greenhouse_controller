@@ -44,9 +44,11 @@ class UI {
         QueueHandle_t encoder_queue;
         const char *name = "TEST";
         uint co2_set;
-        uint min_co2 = 500;
-        uint max_co2 = 1990;
+        uint min_co2 = MIN_CO2_SET;
+        uint max_co2 = MAX_CO2_SET;
         uint co2_edit;
+
+        const char *conn_status;
 
         Message received;
         // For interrupt
@@ -71,7 +73,7 @@ class UI {
 
         const char *welcome_menu[2] = { "SET CO2", "SET NETWORK" };
         const char *co2_menu[2] = { "SAVE", "BACK" };
-        const char *network_menu[2] = { "CHANGE", "BACK" };
+        const char *network_menu[2] = { "NEW CONN.", "BACK" };
         const char *text_entry_menu[2] = { "DELETE LAST", "OK" };
 
         uint current_menu_item = 0;

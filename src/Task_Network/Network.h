@@ -26,6 +26,7 @@ private:
     QueueHandle_t to_CO2;
     QueueHandle_t to_UI;
     QueueHandle_t to_Network;
+    uint co2_set;
     const char *name = "TESTTWO";
     const char *host = "api.thingspeak.com";
     const int port = 80; //http service

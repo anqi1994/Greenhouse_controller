@@ -35,33 +35,49 @@ void Control::task_impl() {
 
     // EEPROM extern memory
     eeprom = std::make_shared<EEPROM>(i2cbus0);
+
     // check last eeprom data
     rebooted = false;
     check_last_eeprom_data(&last_co2_set, &last_fan_speed, &rebooted, wifi_ssid, wifi_pass);
-    printf("EEPROM SSID: %s\n", wifi_ssid);
-    printf("EEPROM PASS: %s\n", wifi_pass);
+    //printf("EEPROM SSID: %s\n", wifi_ssid);
+    //printf("EEPROM PASS: %s\n", wifi_pass);
     if (rebooted) {
         printf("UNEXPECTED REBOOT\n");
 
         if (last_fan_speed == 100) {
             printf("SPEED WAS 100");
             fan.setSpeed(last_fan_speed);
+
         }
         //also send last wifi credentials if rebooted
         Message wifi_message;
         wifi_message.type = NETWORK_CONFIG;
         strcpy(wifi_message.network_config.ssid, wifi_ssid);
         strcpy(wifi_message.network_config.password, wifi_pass);
+        printf("FROM EEPROM ssid: %s\n", wifi_message.network_config.ssid);
+        printf("FROM EEPROM password: %s\n", wifi_message.network_config.password);
         xQueueSendToBack(to_Network, &wifi_message, portMAX_DELAY);
+        xEventGroupSetBits(network_event_group, RECONNECT_WIFI_BIT);
         printf("Wifi details sent to network\n");
     }
 
-    Message from_eeprom;
-    from_eeprom.type = CO2_SET_DATA;
-    from_eeprom.co2_set = last_co2_set;
-    xQueueSendToBack(to_UI, &from_eeprom, portMAX_DELAY);
+    Message co2_eeprom;
+    co2_eeprom.type = CO2_SET_DATA;
+    co2_eeprom.co2_set = last_co2_set;
+    xQueueSendToBack(to_UI, &co2_eeprom, portMAX_DELAY);
+    xQueueSendToBack(to_Network, &co2_eeprom, portMAX_DELAY);
     printf("EEPROM CO2: %u\n", last_co2_set);
     uint co2_set = last_co2_set;
+
+    Message fan_eeprom;
+    fan_eeprom.type = MONITORED_DATA;
+    // initial data (set co2 and last fan speed) is sent from eeprom as last read values. Other values are displayed
+    //as 0s until measured again after reboot
+    fan_eeprom.data.co2_val = 0;
+    fan_eeprom.data.humidity = 0;
+    fan_eeprom.data.temperature = 0;
+    fan_eeprom.data.fan_speed = last_fan_speed;
+    xQueueSendToBack(to_UI, &fan_eeprom, portMAX_DELAY);
 
 
     TickType_t last_valve_time = xTaskGetTickCount();
@@ -149,7 +165,7 @@ void Control::task_impl() {
                     //vTaskDelay(pdMS_TO_TICKS(500));
 
                     //following is for test system!!!!! valve opens for 5s to make sure CO2 level goes up.
-                    vTaskDelay(pdMS_TO_TICKS(5000));
+                    vTaskDelay(pdMS_TO_TICKS(2000));
                     valve.close();
                     eeprom->writeLog("valve closed");
                     valve_open = true;
@@ -179,12 +195,11 @@ void Control::task_impl() {
                 }
             } else if (received.type == NETWORK_CONFIG) {
                 strcpy(wifi_ssid, received.network_config.ssid);
-                eeprom->writeStatus(WIFI_SSID_ADDR, wifi_ssid);
+                eeprom->writeStatus(WIFI_SSID_ADDR, wifi_ssid, STR_BUFFER_SIZE);
 
                 strcpy(wifi_pass,received.network_config.password);
-                eeprom->writeStatus(WIFI_PASS_ADDR, wifi_pass);
+                eeprom->writeStatus(WIFI_PASS_ADDR, wifi_pass, STR_BUFFER_SIZE);
             }
-
         }
 
         //eeprom.printAllLogs();
@@ -226,14 +241,17 @@ void Control::check_last_eeprom_data(uint16_t *last_co2_set, uint16_t *last_fan_
 
     eeprom->readStatus(CO2_SET_ADDR, status_buffer, STATUS_BUFF_SIZE);
     *last_co2_set = atoi(status_buffer);
+    if (*last_co2_set < 500 || *last_co2_set > 1500) {
+        *last_co2_set = 500;
+    }
 
     eeprom->readStatus(FAN_SPEED_ADDR, status_buffer, STATUS_BUFF_SIZE);
     *last_fan_speed = atoi(status_buffer);
     // read last saved wifi and pass
-    eeprom->readStatus(WIFI_SSID_ADDR, string_buffer, STR_BUFFER_SIZE);
+    eeprom->readStatus(WIFI_SSID_ADDR, string_buffer, STR_BUFFER_SIZE, STR_BUFFER_SIZE);
     strcpy(wifi_ssid, string_buffer);
 
-    eeprom->readStatus(WIFI_PASS_ADDR, string_buffer, STR_BUFFER_SIZE);
+    eeprom->readStatus(WIFI_PASS_ADDR, string_buffer, STR_BUFFER_SIZE, STR_BUFFER_SIZE);
     strcpy(wifi_pass, string_buffer);
 
 }

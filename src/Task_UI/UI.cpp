@@ -1,6 +1,7 @@
 #include "UI.h"
 
 #include <cstdio>
+#include <bits/fs_fwd.h>
 
 UI* UI::instance = nullptr;
 
@@ -14,14 +15,6 @@ UI::UI(QueueHandle_t to_CO2, QueueHandle_t to_Network, QueueHandle_t to_UI, Even
     sw(12),
     done_button(8)
     {
-
-    // initial monitored data to display before real measurements are there
-    received.type = MONITORED_DATA;
-    received.data.co2_val = 0;
-    received.data.temperature = 0.0;
-    received.data.humidity = 0.0;
-    received.data.fan_speed = 0;
-    received.co2_set = 0;
 
     //to be used in the isr accessing
     instance = this;
@@ -227,6 +220,7 @@ void UI::co2_screen(encoderEv ev) {
 
 // network setting screen
 void UI::network_screen(encoderEv ev) {
+    screen_needs_update = true;
     if (ev == SW) {
         if (current_menu_item == 0) {
             change_screen(SSID);
@@ -301,8 +295,10 @@ void UI::text_entry_screen(encoderEv ev, std::string& input_str, uint max_len, s
                     strncpy(send.network_config.password, pass_input.c_str(), sizeof(send.network_config.password) - 1);
                     send.network_config.ssid[sizeof(send.network_config.ssid) - 1] = '\0';
                     send.network_config.password[sizeof(send.network_config.password) - 1] = '\0';
-
                     xQueueSendToBack(to_Network, &send, portMAX_DELAY);
+                    xQueueSendToBack(to_CO2, &send, portMAX_DELAY);
+                    xEventGroupSetBits(network_event_group, RECONNECT_WIFI_BIT);
+
                     change_screen(WELCOME);
                 }
             }
@@ -323,8 +319,17 @@ void UI::display_screen() {
 
     switch (current_screen) {
         case WELCOME:
-            snprintf(buffer, sizeof(buffer), "co2:  %uppm", received.data.co2_val);
-            display->text(buffer, 0, 0);
+            display->text("co2:", 0, 0);
+            snprintf(buffer, sizeof(buffer), "%uppm", received.data.co2_val);
+            if (received.data.co2_val >= 2000) {
+                display->text("!", 40, 0);
+                display->rect(48, 0, 60, line_height, 1, true);
+                display->text(buffer, 48, 0, 0);
+            } else {
+                display->text(buffer, 48, 0);
+            }
+
+
 
             snprintf(buffer, sizeof(buffer), "t:    %.1fC", received.data.temperature);
             display->text(buffer, 0, line_height);
@@ -363,9 +368,13 @@ void UI::display_screen() {
             break;
 
         case NET_SET:
-            display->text("CURRENT:", (oled_width-100), 0);
-            //todo: display variable from queue (from EEPROM)
-            display->text("Julijaiph", (oled_width-105), line_height*2);
+            display->text("STATUS:", (oled_width-100), 0);
+            if (xEventGroupGetBits(network_event_group) & CLOUD_CONNECTED_BIT) {
+                conn_status = "CONNECTED";
+            } else {
+                conn_status = "DISCONNECTED";
+            }
+            display->text(conn_status, (oled_width-100), line_height*2);
 
             for (uint i = 0; i < 2; i++) {
                 snprintf(buffer, sizeof(buffer), "%c %s",

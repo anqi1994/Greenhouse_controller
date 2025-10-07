@@ -23,11 +23,17 @@ IPStack::IPStack() : tcp_pcb{nullptr}, dropped{0}, count{0}, wr{0}, rd{0}, tcp_c
 }
 
 bool IPStack::connect_WiFi(const char* ssid, const char* password, int max_retries){
+    static bool initialized = false;
+
     //initialization
-    if (cyw43_arch_init()) {
-        DEBUG_printf("failed to initialise\n");
-        return false;
+    if (!initialized) {
+        if (cyw43_arch_init()) {
+            DEBUG_printf("failed to initialise\n");
+            return false;
+        }
+        initialized = true;
     }
+
     cyw43_arch_enable_sta_mode();
 
     DEBUG_printf("Connecting to Wi-Fi...\n");
@@ -342,4 +348,20 @@ int IPStack::disconnect() {
     return err;
 }
 
+// implemented disconnection from wifi (tc disconnect, deinitialiaze wifi and update conn. status)
+void IPStack::disconnect_WiFi() {
+    // tcp disconnect
+    if (tcp_pcb != nullptr) {
+        disconnect();
+    }
 
+    // leaving the cuttent network
+    cyw43_arch_lwip_begin();
+    cyw43_wifi_leave(&cyw43_state, CYW43_ITF_STA);
+    cyw43_arch_lwip_end();
+
+    wifi_connected = false;
+    tcp_connected = false;
+
+    DEBUG_printf("WiFi disconnected.\n");
+}

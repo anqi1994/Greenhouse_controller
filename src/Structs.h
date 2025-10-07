@@ -2,8 +2,10 @@
 #define STRUCTS_H
 //all the structs that are needed in this project.
 
-
+#define MIN_CO2_SET 500
+#define MAX_CO2_SET 1500
 #define CLOUD_CONNECTED_BIT (1<<0)
+#define RECONNECT_WIFI_BIT (1<<1)
 
 //monitored data gathered from the sensors
 struct Monitored_data{
