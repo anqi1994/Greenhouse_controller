@@ -26,7 +26,6 @@ void Control::task_impl() {
     auto i2cbus0 = std::make_shared<PicoI2C>(0, 100000);
 
     // sensor objects
-    //CO2Sensor co2(rtu_client, 240, false);
     GMP252 co2(rtu_client, 240);
     HMP60 tem_hum_sensor(rtu_client,241);
     //SDP610 pressure_sensor(i2cbus0); // done but not used here
@@ -37,20 +36,15 @@ void Control::task_impl() {
 
     // EEPROM extern memory
     eeprom = std::make_shared<EEPROM>(i2cbus0);
-
+    //clearEEPROM();
     // check last eeprom data
     rebooted = false;
     check_last_eeprom_data(&last_co2_set, &last_fan_speed, &rebooted, wifi_ssid, wifi_pass);
-    //printf("EEPROM SSID: %s\n", wifi_ssid);
-    //printf("EEPROM PASS: %s\n", wifi_pass);
+
     if (rebooted) {
         printf("UNEXPECTED REBOOT\n");
 
-        if (last_fan_speed == 100) {
-            printf("SPEED WAS 100");
-            fan.setSpeed(last_fan_speed);
-
-        }
+        fan.setSpeed(0);
         //also send last wifi credentials if rebooted
         Message wifi_message;
         wifi_message.type = NETWORK_CONFIG;
@@ -62,7 +56,7 @@ void Control::task_impl() {
         xEventGroupSetBits(network_event_group, RECONNECT_WIFI_BIT);
         printf("Wifi details sent to network\n");
     }
-
+    // las co2 set value sent to network and UI
     Message co2_eeprom;
     co2_eeprom.type = CO2_SET_DATA;
     co2_eeprom.co2_set = last_co2_set;
@@ -78,7 +72,7 @@ void Control::task_impl() {
     fan_eeprom.data.co2_val = 0;
     fan_eeprom.data.humidity = 0;
     fan_eeprom.data.temperature = 0;
-    fan_eeprom.data.fan_speed = last_fan_speed;
+    fan_eeprom.data.fan_speed = 0;
     xQueueSendToBack(to_UI, &fan_eeprom, portMAX_DELAY);
 
 
@@ -154,10 +148,10 @@ void Control::task_impl() {
                     eeprom->writeLog("valve open");
 
                     //following is for real system,open the valve only for 0.5s!
-                    //vTaskDelay(pdMS_TO_TICKS(500));
+                    vTaskDelay(pdMS_TO_TICKS(600));
 
                     //following is for test system!!!!! valve opens for 5s to make sure CO2 level goes up.
-                    vTaskDelay(pdMS_TO_TICKS(2000));
+                    //vTaskDelay(pdMS_TO_TICKS(2000));
                     valve.close();
                     eeprom->writeLog("valve closed");
                     valve_open = true;
@@ -165,7 +159,7 @@ void Control::task_impl() {
                 } else {
                     TickType_t current_time = xTaskGetTickCount();
                     // at least a minute interval between valve opening again to let co2 spread
-                    if (current_time - last_valve_time > pdMS_TO_TICKS(60000)) {
+                    if (current_time - last_valve_time > pdMS_TO_TICKS(30000)) {
                         valve_open = false;
                         //last_valve_time = current_time;
                     }
@@ -193,8 +187,6 @@ void Control::task_impl() {
                 eeprom->writeStatus(WIFI_PASS_ADDR, wifi_pass, STR_BUFFER_SIZE);
             }
         }
-
-        //eeprom.printAllLogs();
     }
 }
 
@@ -246,12 +238,12 @@ void Control::check_last_eeprom_data(uint16_t *last_co2_set, uint16_t *last_fan_
 
     eeprom->readStatus(CO2_SET_ADDR, status_buffer, STATUS_BUFF_SIZE);
     *last_co2_set = atoi(status_buffer);
-    if (*last_co2_set < 500 || *last_co2_set > 1500) {
+    if (*last_co2_set < 500 || *last_co2_set > 1500) { // shouldn't be anything outside these values cause they are restricted in UI and Netw
         *last_co2_set = 500;
     }
 
-    eeprom->readStatus(FAN_SPEED_ADDR, status_buffer, STATUS_BUFF_SIZE);
-    *last_fan_speed = atoi(status_buffer);
+    //eeprom->readStatus(FAN_SPEED_ADDR, status_buffer, STATUS_BUFF_SIZE);
+    //*last_fan_speed = atoi(status_buffer);
     // read last saved wifi and pass
     eeprom->readStatus(WIFI_SSID_ADDR, string_buffer, STR_BUFFER_SIZE, STR_BUFFER_SIZE);
     strcpy(wifi_ssid, string_buffer);
@@ -260,5 +252,21 @@ void Control::check_last_eeprom_data(uint16_t *last_co2_set, uint16_t *last_fan_
     strcpy(wifi_pass, string_buffer);
 }
 
+void Control::clearEEPROM() {
+    printf("Clearing entire EEPROM...\n");
 
+    const size_t CHUNK_SIZE = 32;
+    uint8_t zero_buffer[CHUNK_SIZE] = {};
+
+    // Adjust max address based on your EEPROM size (e.g., 0x7FFF for 32KB)
+    for (uint16_t addr = 0; addr <= 0x7FFF; addr += CHUNK_SIZE) {
+        eeprom->eepromWrite(addr, zero_buffer, CHUNK_SIZE);
+
+        if (addr % 256 == 0) {
+            printf("Cleared: 0x%04X\n", addr);
+        }
+    }
+
+    printf("EEPROM cleared!\n");
+}
 

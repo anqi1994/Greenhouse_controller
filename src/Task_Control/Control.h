@@ -35,6 +35,7 @@ private:
     //bool check_sensor_val(Monitored_data data);
     void check_last_eeprom_data(uint16_t *last_co2_set, uint16_t *last_fan_speed, bool *rebooted,
         char *wifi_ssid, char *wifi_pass);
+    void clearEEPROM();
 
     SemaphoreHandle_t timer_semphr;
     TaskHandle_t control_task;

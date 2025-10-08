@@ -348,7 +348,7 @@ int IPStack::disconnect() {
     return err;
 }
 
-// implemented disconnection from wifi (tc disconnect, deinitialiaze wifi and update conn. status)
+// implemented disconnection from wifi (tcp disconnect, deinitialiaze wifi and update conn. status)
 void IPStack::disconnect_WiFi() {
     // tcp disconnect
     if (tcp_pcb != nullptr) {

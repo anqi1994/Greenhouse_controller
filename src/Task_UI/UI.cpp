@@ -128,20 +128,6 @@ void UI::task_impl() {
                     break;
             }
         }
-
-        //sending CO2 data, needs to be triggered when the user change
-        /*now it's test
-        if(!tested){
-            //queue to network, it needs to send type, co2 set level.
-            send.type = CO2_SET_DATA;
-            send.co2_set = co2_set;
-            xQueueSendToBack(to_Network, &send, portMAX_DELAY);
-            printf("QUEUE from UI from network: %d\n", send.co2_set);
-            //queue to co2, it only needs to send uint co2 set value.
-            xQueueSendToBack(to_CO2, &co2_set, portMAX_DELAY);
-            printf("QUEUE from UI to CO2: %d\n", co2_set);
-            tested = true;
-        }*/
     }
 }
 
