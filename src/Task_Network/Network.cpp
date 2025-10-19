@@ -49,10 +49,6 @@ void Network::task_impl() {
             else if(received.type == CO2_SET_DATA){
                 //save the co2 set level from the UI task
                 co2_set = received.co2_set;
-                //initial_data_ready = true;
-                //upload_co2_set_level(ip_stack, co2_set);
-                //upload_sensor_data(ip_stack,monitored_data);
-                //printf("QUEUE to network from UI: co2_set: %d\n", co2_set);
             }
 
             //the received data is from UI task or Control task (after reboot when eeprom has the information saved)
@@ -186,40 +182,6 @@ bool Network::upload_data_to_cloud(IPStack &ip_stack, Monitored_data &data,uint 
     printf("upload monitored data to network failed. \n");
     return false;
 }
-
-//upload co2 set level
-/*bool Network::upload_co2_set_level(IPStack &ip_stack, uint co2_set){
-    char req[256];
-
-    // Update fields using a minimal GET request - tested to work
-    //uploading monitored data to the cloud
-    snprintf(req,sizeof(req),
-            "GET /update?api_key=%s&field5=%u HTTP/1.1\r\n"
-            "Host: %s\r\n"
-            "\r\n",
-            write_api,
-            co2_set,
-            host);
-
-    ip_stack.write((unsigned char *)(req),strlen(req));
-    vTaskDelay(pdMS_TO_TICKS(2000));
-    auto rv = ip_stack.read((unsigned char*)buffer, BUFSIZE, 100);
-    if(rv <= 0){
-        printf("No response from server\n");
-        return false;
-    }
-    buffer[rv] = 0;
-    char* body = extract_thingspeak_http_body();
-    if(body){
-        int id = atoi(body);
-        if(id > 0){
-            printf("upload co2 level to network. \n");
-            return true;
-        }
-    }
-    printf("upload co2 level to network failed. \n");
-    return false;
-}*/
 
 //getting co2 set level from talkback queue in cloud. field6 = co2 level set
 uint Network::read_co2_set_level(IPStack &ip_stack){

@@ -83,7 +83,6 @@ void UI::task_impl() {
     //bool tested = true;
 
     while (true) {
-        //bool data_updated = false;
         Message temp_received;
         // non-blocking queue to receive from control/netw
         if (xQueueReceive(to_UI, &temp_received, 0)) {
@@ -274,8 +273,6 @@ void UI::text_entry_screen(encoderEv ev, std::string& input_str, uint max_len, s
                     printf("SSID ENTERED: %s\n", ssid_input.c_str());
                     printf("PASS ENTERED: %s\n", pass_input.c_str());
 
-                    //send.network_config.password = pass_input.c_str();
-                    //send.network_config.ssid = ssid_input.c_str();
 
                     strncpy(send.network_config.ssid, ssid_input.c_str(), sizeof(send.network_config.ssid) - 1);
                     strncpy(send.network_config.password, pass_input.c_str(), sizeof(send.network_config.password) - 1);

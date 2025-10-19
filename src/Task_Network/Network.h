@@ -20,7 +20,6 @@ private:
     bool connect_to_http(IPStack &ip_stack);
     int disconnect_to_http(IPStack &ip_stack);
     bool upload_data_to_cloud(IPStack &ip_stack, Monitored_data &data, uint co2_set);
-    //bool upload_co2_set_level(IPStack &ip_stack, uint co2_set);
     uint read_co2_set_level(IPStack &ip_stack);
     bool connect_to_cloud(IPStack &ip_stack, const char* wifi_ssid, const char* wifi_password);
     QueueHandle_t to_CO2;

@@ -31,8 +31,7 @@ private:
     // Private functions
     void task_impl();
     bool check_fan(Produal &fan);
-    void handle_fan_control(Produal &fan, uint16_t co2_level, uint16_t max_co2);
-    //bool check_sensor_val(Monitored_data data);
+    void handle_fan_control(Produal &fan, uint16_t co2_level, uint16_t max_co2, uint16_t set_co2);
     void check_last_eeprom_data(uint16_t *last_co2_set, uint16_t *last_fan_speed, bool *rebooted,
         char *wifi_ssid, char *wifi_pass);
     void clearEEPROM();

@@ -36,7 +36,7 @@ void Control::task_impl() {
 
     // EEPROM extern memory
     eeprom = std::make_shared<EEPROM>(i2cbus0);
-    //clearEEPROM();
+
     // check last eeprom data
     rebooted = false;
     check_last_eeprom_data(&last_co2_set, &last_fan_speed, &rebooted, wifi_ssid, wifi_pass);
@@ -65,15 +65,15 @@ void Control::task_impl() {
     printf("EEPROM CO2: %u\n", last_co2_set);
     uint co2_set = last_co2_set;
 
-    Message fan_eeprom;
-    fan_eeprom.type = MONITORED_DATA;
+    Message from_eeprom;
+    from_eeprom.type = MONITORED_DATA;
     // initial data (set co2 and last fan speed) is sent from eeprom as last read values. Other values are displayed
-    //as 0s until measured again after reboot
-    fan_eeprom.data.co2_val = 0;
-    fan_eeprom.data.humidity = 0;
-    fan_eeprom.data.temperature = 0;
-    fan_eeprom.data.fan_speed = 0;
-    xQueueSendToBack(to_UI, &fan_eeprom, portMAX_DELAY);
+    //as 0s until measured again after reboot. Was done to be able to retrieve required data after reboot
+    from_eeprom.data.co2_val = 0;
+    from_eeprom.data.humidity = 0;
+    from_eeprom.data.temperature = 0;
+    from_eeprom.data.fan_speed = 0;
+    xQueueSendToBack(to_UI, &from_eeprom, portMAX_DELAY);
 
 
     TickType_t last_valve_time = xTaskGetTickCount();
@@ -85,7 +85,6 @@ void Control::task_impl() {
         MessageType msg = MONITORED_DATA;
         Message message{};
         Message received;
-
 
         //main CO2 control logic which is triggered by the timer for getting monitored data.
         if (xSemaphoreTake(timer_semphr, pdMS_TO_TICKS(10)) == pdTRUE) {
@@ -115,15 +114,13 @@ void Control::task_impl() {
             data.fan_speed = fan.getSpeed();
             printf("fan_speed: %u\n", data.fan_speed);
 
-            //printf("pressure: %.1f\n", pressure_sensor.read());
             eeprom->writeLog("pressure measured");
-            //vTaskDelay(pdMS_TO_TICKS(10));
             message.type = msg;
             message.data = data;
 
 
             //main co2 level control logic
-            handle_fan_control(fan, data.co2_val, max_co2);
+            handle_fan_control(fan, data.co2_val, max_co2, co2_set);
 
             snprintf(status_buffer, sizeof(status_buffer), "%u", fan.getSpeed());
             eeprom->writeStatus(FAN_SPEED_ADDR, status_buffer);
@@ -131,13 +128,12 @@ void Control::task_impl() {
             message.data.fan_speed = fan.getSpeed();
             // send data to queues from co2 control task
             xQueueSendToBack(to_UI, &message, portMAX_DELAY);
-            //printf("QUEUE from co2 to UI\n");
+
             EventBits_t bits = xEventGroupGetBits(network_event_group);
 
             //only send information to network once it is connected to the cloud
             if (bits & CLOUD_CONNECTED_BIT){
                 xQueueSendToBack(to_Network, &message, portMAX_DELAY);
-                //printf("QUEUE from co2 to network\n");
             }
 
             // a minute at least between openings
@@ -148,10 +144,8 @@ void Control::task_impl() {
                     eeprom->writeLog("valve open");
 
                     //following is for real system,open the valve only for 0.5s!
-                    vTaskDelay(pdMS_TO_TICKS(600));
+                    vTaskDelay(pdMS_TO_TICKS(500));
 
-                    //following is for test system!!!!! valve opens for 5s to make sure CO2 level goes up.
-                    //vTaskDelay(pdMS_TO_TICKS(2000));
                     valve.close();
                     eeprom->writeLog("valve closed");
                     valve_open = true;
@@ -161,7 +155,6 @@ void Control::task_impl() {
                     // at least a minute interval between valve opening again to let co2 spread
                     if (current_time - last_valve_time > pdMS_TO_TICKS(30000)) {
                         valve_open = false;
-                        //last_valve_time = current_time;
                     }
                 }
             }
@@ -190,7 +183,7 @@ void Control::task_impl() {
     }
 }
 
-void Control::handle_fan_control(Produal &fan, uint16_t co2_level, uint16_t max_co2) {
+void Control::handle_fan_control(Produal &fan, uint16_t co2_level, uint16_t max_co2, uint16_t set_co2) {
     if (co2_level >= max_co2) {
         fan.setSpeed(max_fan_speed);
         vTaskDelay(pdMS_TO_TICKS(10));
@@ -198,7 +191,7 @@ void Control::handle_fan_control(Produal &fan, uint16_t co2_level, uint16_t max_
         if(!check_fan(fan)) {
             eeprom->writeLog("Fan failed");
         }
-    } else {
+    } else if (co2_level <= set_co2) {
         fan.setSpeed(0);
     }
 }
@@ -238,12 +231,11 @@ void Control::check_last_eeprom_data(uint16_t *last_co2_set, uint16_t *last_fan_
 
     eeprom->readStatus(CO2_SET_ADDR, status_buffer, STATUS_BUFF_SIZE);
     *last_co2_set = atoi(status_buffer);
-    if (*last_co2_set < 500 || *last_co2_set > 1500) { // shouldn't be anything outside these values cause they are restricted in UI and Netw
-        *last_co2_set = 500;
+    if (*last_co2_set < 500 || *last_co2_set > 1500) {
+        clearEEPROM();// shouldn't be anything outside these values cause they are restricted in UI and Netw
+        *last_co2_set = 700;
     }
 
-    //eeprom->readStatus(FAN_SPEED_ADDR, status_buffer, STATUS_BUFF_SIZE);
-    //*last_fan_speed = atoi(status_buffer);
     // read last saved wifi and pass
     eeprom->readStatus(WIFI_SSID_ADDR, string_buffer, STR_BUFFER_SIZE, STR_BUFFER_SIZE);
     strcpy(wifi_ssid, string_buffer);
@@ -266,7 +258,6 @@ void Control::clearEEPROM() {
             printf("Cleared: 0x%04X\n", addr);
         }
     }
-
     printf("EEPROM cleared!\n");
 }
 

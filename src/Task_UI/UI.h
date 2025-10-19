@@ -58,7 +58,6 @@ class UI {
         GPIO sw;
         GPIO done_button;
         TickType_t last_sw_time = 0;
-        // these are used so that entering ssid and pass exits when pressed longer
         TickType_t last_done_time = 0;
 
 
