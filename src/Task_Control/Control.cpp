@@ -1,8 +1,5 @@
 #include "Control.h"
 
-//todo: maybe use a state machine for cleaner task_impl?
-//todo: could be a function for sending initial eeprom
-
 Control::Control(SemaphoreHandle_t timer,
     QueueHandle_t to_UI, QueueHandle_t to_Network, QueueHandle_t to_CO2,
     EventGroupHandle_t network_event_group,
